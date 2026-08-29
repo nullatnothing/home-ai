@@ -1084,8 +1084,10 @@ function HomeScreen({
             </Pressable>
           </View>
           <Pressable onPress={() => { createNewThread(); setSidebarOpen(false); }} style={styles.drawerNewChatButton}>
-            <Ionicons name="add-circle-outline" size={18} color="#4F46E5" />
-           <Text style={styles.drawerNewChatText}>{strings.newChat}</Text>
+           <View style={styles.drawerNewChatContent}>
+             <Ionicons name="add" size={18} color="#FFF" />
+             <Text style={styles.drawerNewChatText}>{strings.newChat}</Text>
+           </View>
           </Pressable>
           <View style={styles.historyList}>
             {threads.map((thread) => (
@@ -1547,15 +1549,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#4F46E5',
   },
   drawerNewChatButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     backgroundColor: '#4F46E5',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 12,
+  },
+  drawerNewChatContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   drawerNewChatText: {
     color: '#FFF',
