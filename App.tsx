@@ -359,6 +359,17 @@ function HomeScreen({
     setDraft('');
   }, []);
 
+  const handleRefreshModels = useCallback(() => {
+    void refreshModels().then(() => {
+      const count = availableModels.length;
+      if (count > 0) {
+        Alert.alert('Models refreshed', `${count} model(s) available.`);
+      } else {
+        Alert.alert('Refresh complete', 'No models were returned from the server yet.');
+      }
+    });
+  }, [availableModels.length, refreshModels]);
+
   const deleteThread = useCallback((threadId: string) => {
     setThreads((current) => {
       const remaining = current.filter((thread) => thread.id !== threadId);
@@ -572,15 +583,7 @@ function HomeScreen({
           <Text style={styles.label}>Available AI</Text>
           <View style={styles.aiActionsRow}>
             <Pressable
-              onPress={async () => {
-                await refreshModels();
-                const count = availableModels.length;
-                if (count > 0) {
-                  Alert.alert('Models refreshed', `${count} model(s) available.`);
-                } else {
-                  Alert.alert('Refresh complete', 'No models were returned from the server yet.');
-                }
-              }}
+              onPress={handleRefreshModels}
               style={styles.refreshIconButton}
               hitSlop={8}
             >
@@ -753,6 +756,8 @@ function SettingsScreen({
     setDraftUrl(serverUrl);
   }, [serverUrl]);
 
+  const isSaveDisabled = !draftUrl.trim() || draftUrl === serverUrl;
+
   const handleSave = useCallback(() => {
     const normalized = sanitizeUrl(draftUrl);
     if (!normalized) {
@@ -803,7 +808,7 @@ function SettingsScreen({
       >
         <View style={styles.settingsCard}>
           <Text style={styles.heading}>Settings</Text>
-          <Text style={styles.label}>Ollama server URL</Text>
+          <Text style={[styles.label, styles.settingsLabelSpacing]}>Ollama server URL</Text>
           <TextInput
             value={draftUrl}
             onChangeText={setDraftUrl}
@@ -814,8 +819,12 @@ function SettingsScreen({
           />
 
           <View style={styles.buttonRow}>
-            <Pressable style={[styles.primaryButton, styles.fullWidth]} onPress={handleSave}>
-              <Text style={styles.primaryButtonText}>Save</Text>
+            <Pressable
+              style={[styles.primaryButton, styles.fullWidth, isSaveDisabled && styles.primaryButtonDisabled]}
+              onPress={handleSave}
+              disabled={isSaveDisabled}
+            >
+              <Text style={[styles.primaryButtonText, isSaveDisabled && styles.primaryButtonTextDisabled]}>Save</Text>
             </Pressable>
             <Pressable
               style={[styles.secondaryButton, styles.fullWidth, isTesting && styles.buttonDisabled]}
@@ -828,7 +837,8 @@ function SettingsScreen({
         </View>
 
         <View style={styles.settingsCard}>
-          <Text style={styles.label}>Current model</Text>
+          <Text style={styles.heading}>Models</Text>
+          <Text style={[styles.label, styles.settingsLabelSpacing]}>Current model</Text>
           <Text style={styles.valueText}>{selectedModel}</Text>
           <Text style={styles.label}>Available models</Text>
           {availableModels.length > 0 ? (
@@ -890,7 +900,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   heading: {
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -1070,6 +1080,12 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     backgroundColor: '#F8FAFC',
   },
+  homeSectionTitle: {
+    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
   modelHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1081,6 +1097,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 0,
+  },
+  settingsLabelSpacing: {
+    marginTop: 12,
   },
   aiActionsRow: {
     flexDirection: 'row',
@@ -1305,9 +1324,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
+  primaryButtonDisabled: {
+    backgroundColor: '#4F46E5',
+    opacity: 0.5,
+  },
   primaryButtonText: {
     color: '#FFF',
     fontWeight: '700',
+  },
+  primaryButtonTextDisabled: {
+    color: '#FFF',
   },
   secondaryButton: {
     backgroundColor: '#E2E8F0',
