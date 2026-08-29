@@ -481,7 +481,12 @@ function HomeScreen({
           onPress={() => setSidebarOpen(false)}
         />
         <View style={[styles.drawerPanel, { transform: [{ translateX: sidebarOpen ? 0 : -320 }] }]}>
-          <Text style={styles.drawerTitle}>Chat history</Text>
+          <View style={styles.drawerHeader}>
+            <Text style={styles.drawerTitle}>Chat history</Text>
+            <Pressable onPress={() => setSidebarOpen(false)} style={styles.drawerCloseButton}>
+              <Ionicons name="close" size={20} color="#FFF" />
+            </Pressable>
+          </View>
           <View style={styles.historyList}>
             {threads.map((thread) => (
               <Pressable
@@ -839,11 +844,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 16,
   },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   drawerTitle: {
     color: '#0F172A',
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 12,
+  },
+  drawerCloseButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4F46E5',
   },
   historySection: {
     paddingHorizontal: 16,
