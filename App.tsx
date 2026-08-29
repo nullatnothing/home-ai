@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -514,13 +515,10 @@ function HomeScreen({
     }
 
     try {
-      if (Platform.OS === 'web') {
-        if (typeof navigator !== 'undefined' && navigator.clipboard) {
-          await navigator.clipboard.writeText(text);
-        }
-      } else {
-        // not using a clipboard library; Android/iOS fallback: use native share-like prompt through Alert
-        const copied = await new Promise<boolean>((resolve) => {
+      let shouldCopy = true;
+
+      if (Platform.OS !== 'web') {
+        shouldCopy = await new Promise<boolean>((resolve) => {
           showDialog({
             title: 'Copy text',
             message: 'Copy this message to the clipboard?',
@@ -530,15 +528,22 @@ function HomeScreen({
             onCancel: () => resolve(false),
           });
         });
+      }
 
-        if (!copied) {
-          return;
+      if (!shouldCopy) {
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
         }
+      } else {
+        await Clipboard.setStringAsync(text);
       }
 
       setCopiedText(text);
       setTimeout(() => setCopiedText(null), 1200);
-      showDialog({ title: 'Copied', message: 'Message copied to clipboard.', confirmText: 'OK' });
     } catch (error) {
       console.warn('Clipboard copy failed', error);
       showDialog({ title: 'Copy failed', message: 'Unable to copy this message.', confirmText: 'OK' });
