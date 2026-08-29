@@ -47,6 +47,8 @@ type ChatThread = {
   id: string;
   title: string;
   messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
 };
 
 const DEFAULT_SERVER_URL = 'http://192.168.88.13:11434';
@@ -285,6 +287,8 @@ function HomeScreen({
         text: 'Hi! Ask anything using your local Ollama model.',
       },
     ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   }), []);
 
   const [threads, setThreads] = useState<ChatThread[]>([createWelcomeThread()]);
@@ -303,13 +307,20 @@ function HomeScreen({
         const storedActiveId = await storage.getItem(STORAGE_KEYS.activeThreadId);
 
         if (storedThreads) {
-          const parsed = JSON.parse(storedThreads) as ChatThread[];
+          const parsed = JSON.parse(storedThreads) as Partial<ChatThread>[];
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setThreads(parsed);
-            if (storedActiveId && parsed.some((thread) => thread.id === storedActiveId)) {
+            const normalized = parsed.map((thread) => ({
+              id: thread.id ?? `thread-${Date.now()}-${Math.random()}`,
+              title: thread.title || 'New chat',
+              messages: Array.isArray(thread.messages) ? thread.messages : [],
+              createdAt: thread.createdAt ?? Date.now(),
+              updatedAt: thread.updatedAt ?? thread.createdAt ?? Date.now(),
+            }));
+            setThreads(normalized);
+            if (storedActiveId && normalized.some((thread) => thread.id === storedActiveId)) {
               setActiveThreadId(storedActiveId);
             } else {
-              setActiveThreadId(parsed[0].id);
+              setActiveThreadId(normalized[0].id);
             }
             return;
           }
@@ -353,6 +364,8 @@ function HomeScreen({
       id: newThreadId,
       title: 'New chat',
       messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
     setThreads((current) => [newThread, ...current]);
     setActiveThreadId(newThreadId);
@@ -387,41 +400,43 @@ function HomeScreen({
     });
   }, [activeThreadId, createWelcomeThread]);
 
+  const [renameThreadId, setRenameThreadId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+
   const renameThread = useCallback((threadId: string) => {
     const thread = threads.find((item) => item.id === threadId);
     if (!thread) {
       return;
     }
 
-    Alert.prompt(
-      'Rename chat',
-      'Choose a new title',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: (value?: string) => {
-            const trimmed = value?.trim();
-            if (!trimmed) {
-              return;
-            }
-
-            setThreads((current) =>
-              current.map((item) =>
-                item.id === threadId ? { ...item, title: trimmed } : item,
-              ),
-            );
-          },
-        },
-      ],
-      'plain-text',
-      thread.title,
-    );
+    setRenameThreadId(threadId);
+    setRenameDraft(thread.title);
   }, [threads]);
+
+  const finalizeRenameThread = useCallback(() => {
+    if (!renameThreadId) {
+      return;
+    }
+
+    const trimmed = renameDraft.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setThreads((current) =>
+      current.map((item) =>
+        item.id === renameThreadId ? { ...item, title: trimmed, updatedAt: Date.now() } : item,
+      ),
+    );
+    setRenameThreadId(null);
+    setRenameDraft('');
+  }, [renameDraft, renameThreadId]);
 
   const updateActiveThread = useCallback((updater: (thread: ChatThread) => ChatThread) => {
     setThreads((current) =>
-      current.map((thread) => (thread.id === activeThreadId ? updater(thread) : thread)),
+      current.map((thread) =>
+        thread.id === activeThreadId ? { ...updater(thread), updatedAt: Date.now() } : thread,
+      ),
     );
   }, [activeThreadId]);
 
@@ -472,6 +487,20 @@ function HomeScreen({
       console.warn('Clipboard copy failed', error);
       Alert.alert('Copy failed', 'Unable to copy this message.');
     }
+  }, []);
+
+  const formatThreadTimestamp = useCallback((value: number) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'Just now';
+    }
+
+    return date.toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   }, []);
 
   const sendMessage = useCallback(async () => {
@@ -626,23 +655,26 @@ function HomeScreen({
                   <Text style={[styles.historyItemText, activeThreadId === thread.id && styles.historyItemTextActive]}>
                     {thread.title || 'New chat'}
                   </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => renameThread(thread.id)}
-                  style={styles.historyActionButton}
-                  hitSlop={8}
-                >
-                  <Ionicons name="pencil-outline" size={15} color={activeThreadId === thread.id ? '#FFF' : '#475569'} />
-                </Pressable>
-                <Pressable
-                  onPress={() => deleteThread(thread.id)}
-                  style={styles.historyActionButton}
-                  hitSlop={8}
-                >
-                  <Ionicons name="trash-outline" size={16} color={activeThreadId === thread.id ? '#FFF' : '#475569'} />
-                </Pressable>
-              </View>
-            ))}
+                 <Text style={[styles.historyTimestamp, activeThreadId === thread.id && styles.historyTimestampActive]}>
+                   {formatThreadTimestamp(thread.updatedAt ?? thread.createdAt ?? Date.now())}
+                 </Text>
+               </Pressable>
+               <Pressable
+                 onPress={() => renameThread(thread.id)}
+                 style={styles.historyActionButton}
+                 hitSlop={8}
+               >
+                 <Ionicons name="pencil-outline" size={15} color={activeThreadId === thread.id ? '#FFF' : '#475569'} />
+               </Pressable>
+               <Pressable
+                 onPress={() => deleteThread(thread.id)}
+                 style={styles.historyActionButton}
+                 hitSlop={8}
+               >
+                 <Ionicons name="trash-outline" size={16} color={activeThreadId === thread.id ? '#FFF' : '#475569'} />
+               </Pressable>
+             </View>
+           ))}
           </View>
         </View>
       </View>
@@ -723,6 +755,33 @@ function HomeScreen({
                 </Pressable>
               ))
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={!!renameThreadId} transparent animationType="fade" onRequestClose={() => setRenameThreadId(null)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setRenameThreadId(null)}>
+          <Pressable style={styles.modalCard} onPress={() => undefined}>
+            <Text style={styles.modalTitle}>Rename chat</Text>
+            <TextInput
+              value={renameDraft}
+              onChangeText={setRenameDraft}
+              placeholder="Enter a chat title"
+              autoFocus
+              style={styles.renameInput}
+            />
+            <View style={styles.renameActions}>
+              <Pressable onPress={() => setRenameThreadId(null)} style={[styles.secondaryButton, styles.renameActionButton]}>
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={finalizeRenameThread}
+                disabled={!renameDraft.trim()}
+                style={[styles.primaryButton, styles.renameActionButton, !renameDraft.trim() && styles.primaryButtonDisabled]}
+              >
+                <Text style={[styles.primaryButtonText, !renameDraft.trim() && styles.primaryButtonTextDisabled]}>Save</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1074,6 +1133,14 @@ const styles = StyleSheet.create({
   historyItemTextActive: {
     color: '#FFF',
   },
+  historyTimestamp: {
+    color: '#64748B',
+    fontSize: 10,
+    marginTop: 4,
+  },
+  historyTimestampActive: {
+    color: '#E2E8F0',
+  },
   modelSection: {
     paddingHorizontal: 14,
     paddingTop: 8,
@@ -1295,6 +1362,23 @@ const styles = StyleSheet.create({
   },
   modelOptionTextSelected: {
     color: '#FFF',
+  },
+  renameInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  renameActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  renameActionButton: {
+    flex: 1,
   },
   settingsCard: {
     backgroundColor: '#FFF',
