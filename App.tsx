@@ -1027,8 +1027,8 @@ function HomeScreen({
             <Ionicons name={sidebarOpen ? 'close' : 'menu'} size={18} color="#FFF" />
           </Pressable>
           <View style={styles.headerMeta}>
-           <Text style={styles.heading}>{strings.home}</Text>
-            <Text style={styles.serverText}>{serverUrl}</Text>
+           <Text style={[styles.heading, styles.topBarHeading]}>{strings.home}</Text>
+           <Text style={styles.serverText}>{serverUrl}</Text>
           </View>
         </View>
         <View style={styles.topBarActions}>
@@ -1432,6 +1432,9 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 18,
     fontWeight: '700',
+  },
+  topBarHeading: {
+    color: '#F8FAFC',
   },
   serverText: {
     color: '#CBD5E1',
