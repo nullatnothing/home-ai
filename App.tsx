@@ -29,7 +29,370 @@ const STORAGE_KEYS = {
   selectedModel: 'homeai.selectedModel',
   threadHistory: 'homeai.threadHistory',
   activeThreadId: 'homeai.activeThreadId',
+  language: 'homeai.language',
 };
+
+type Language = 'en' | 'de' | 'es' | 'it' | 'fr';
+
+type TranslationStrings = {
+  loading: string;
+  home: string;
+  settings: string;
+  newChat: string;
+  messagePlaceholder: string;
+  send: string;
+  sendLoading: string;
+  startConversation: string;
+  chatHistory: string;
+  availableAi: string;
+  availableModels: string;
+  currentModel: string;
+  chooseModel: string;
+  noModelsAvailable: string;
+  noModelsFoundYet: string;
+  renameChat: string;
+  enterChatTitle: string;
+  cancel: string;
+  save: string;
+  saveServerUrl: string;
+  testing: string;
+  testConnection: string;
+  ollamaServerUrl: string;
+  language: string;
+  settingsTitle: string;
+  modelsTitle: string;
+  serverUpdatedTitle: string;
+  noServerUrlTitle: string;
+  noServerUrlMessage: string;
+  noAiServerConfigured: string;
+  noAiServerConfiguredMessage: string;
+  noConnectionTestYet: string;
+  copyTextTitle: string;
+  copyTextMessage: string;
+  copyAction: string;
+  copyFailedTitle: string;
+  copyFailedMessage: string;
+  copied: string;
+  ok: string;
+  info: string;
+  chatFailed: string;
+  connectionSuccessful: string;
+  connectionFailed: string;
+  serverUpdatedMessage: string;
+  usingLabel: string;
+  connectedTo: string;
+  modelsFound: string;
+  noModelsReturned: string;
+  connectionOk: string;
+  selectModel: string;
+  modelsRefreshed: string;
+  refreshComplete: string;
+  noResponseReceived: string;
+  serverRespondedAt: string;
+  noServerUrlConfigured: string;
+  unknownError: string;
+  justNow: string;
+};
+
+const translations: Record<Language, TranslationStrings> = {
+  en: {
+    loading: 'Loading HomeAI…',
+    home: 'Home',
+    settings: 'Settings',
+    newChat: 'New chat',
+    messagePlaceholder: 'Message the AI...',
+    send: 'Send',
+    sendLoading: '...',
+    startConversation: 'Start a new conversation',
+    chatHistory: 'Chat history',
+    availableAi: 'Available AI',
+    availableModels: 'Available models',
+    currentModel: 'Current model',
+    chooseModel: 'Choose model',
+    noModelsAvailable: 'No models available',
+    noModelsFoundYet: 'No models found yet.',
+    renameChat: 'Rename chat',
+    enterChatTitle: 'Enter a chat title',
+    cancel: 'Cancel',
+    save: 'Save',
+    saveServerUrl: 'Save',
+    testing: 'Testing...',
+    testConnection: 'Test connection',
+    ollamaServerUrl: 'Ollama server URL',
+    language: 'Language',
+    settingsTitle: 'Settings',
+    modelsTitle: 'Models',
+    serverUpdatedTitle: 'Server updated',
+    noServerUrlTitle: 'No server URL',
+    noServerUrlMessage: 'Please enter your Ollama server URL first.',
+    noAiServerConfigured: 'No AI server configured',
+    noAiServerConfiguredMessage: 'Please set your Ollama URL in Settings first.',
+    noConnectionTestYet: 'No connection test yet',
+    copyTextTitle: 'Copy text',
+    copyTextMessage: 'Copy this message to the clipboard?',
+    copyAction: 'Copy',
+    copyFailedTitle: 'Copy failed',
+    copyFailedMessage: 'Unable to copy this message.',
+    copied: 'Copied',
+    ok: 'OK',
+    info: 'Info',
+    chatFailed: 'Chat failed',
+    connectionSuccessful: 'Connection successful',
+    connectionFailed: 'Connection failed',
+    serverUpdatedMessage: 'Using:',
+    usingLabel: 'Using',
+    connectedTo: 'Connected to',
+    modelsFound: 'model(s) found',
+    noModelsReturned: 'No models were returned from the server yet.',
+    connectionOk: 'Connection OK',
+    selectModel: 'Select model',
+    modelsRefreshed: 'Models refreshed',
+    refreshComplete: 'Refresh complete',
+    noResponseReceived: 'No response received.',
+    serverRespondedAt: 'Server responded at',
+    noServerUrlConfigured: 'No server URL configured.',
+    unknownError: 'Unknown error',
+    justNow: 'Just now',
+  },
+  de: {
+    loading: 'HomeAI wird geladen…',
+    home: 'Startseite',
+    settings: 'Einstellungen',
+    newChat: 'Neues Gespräch',
+    messagePlaceholder: 'AI nach etwas fragen...',
+    send: 'Senden',
+    sendLoading: '...',
+    startConversation: 'Starte eine neue Unterhaltung',
+    chatHistory: 'Chatverlauf',
+    availableAi: 'Verfügbare KI',
+    availableModels: 'Verfügbare Modelle',
+    currentModel: 'Aktuelles Modell',
+    chooseModel: 'Modell wählen',
+    noModelsAvailable: 'Keine Modelle verfügbar',
+    noModelsFoundYet: 'Noch keine Modelle gefunden.',
+    renameChat: 'Gespräch umbenennen',
+    enterChatTitle: 'Gesprächstitel eingeben',
+    cancel: 'Abbrechen',
+    save: 'Speichern',
+    saveServerUrl: 'Speichern',
+    testing: 'Testen...',
+    testConnection: 'Verbindung testen',
+    ollamaServerUrl: 'Ollama-Server-URL',
+    language: 'Sprache',
+    settingsTitle: 'Einstellungen',
+    modelsTitle: 'Modelle',
+    serverUpdatedTitle: 'Server aktualisiert',
+    noServerUrlTitle: 'Keine Server-URL',
+    noServerUrlMessage: 'Bitte gib zuerst deine Ollama-Server-URL ein.',
+    noAiServerConfigured: 'Keine KI-Server konfiguriert',
+    noAiServerConfiguredMessage: 'Bitte richte deine Ollama-URL in den Einstellungen ein.',
+    noConnectionTestYet: 'Noch kein Verbindungsstatus',
+    copyTextTitle: 'Text kopieren',
+    copyTextMessage: 'Diesen Text in die Zwischenablage kopieren?',
+    copyAction: 'Kopieren',
+    copyFailedTitle: 'Kopieren fehlgeschlagen',
+    copyFailedMessage: 'Dieser Text konnte nicht kopiert werden.',
+    copied: 'Kopiert',
+    ok: 'OK',
+    info: 'Info',
+    chatFailed: 'Chat fehlgeschlagen',
+    connectionSuccessful: 'Verbindung erfolgreich',
+    connectionFailed: 'Verbindung fehlgeschlagen',
+    serverUpdatedMessage: 'Verwendet:',
+    usingLabel: 'Verwendet',
+    connectedTo: 'Verbunden mit',
+    modelsFound: 'Modell(e) gefunden',
+    noModelsReturned: 'Noch keine Modelle vom Server zurückgegeben.',
+    connectionOk: 'Verbindung OK',
+    selectModel: 'Modell auswählen',
+    modelsRefreshed: 'Modelle aktualisiert',
+    refreshComplete: 'Aktualisierung abgeschlossen',
+    noResponseReceived: 'Keine Antwort erhalten.',
+    serverRespondedAt: 'Server antwortete unter',
+    noServerUrlConfigured: 'Keine Server-URL konfiguriert.',
+    unknownError: 'Unbekannter Fehler',
+    justNow: 'Gerade eben',
+  },
+  es: {
+    loading: 'Cargando HomeAI…',
+    home: 'Inicio',
+    settings: 'Configuración',
+    newChat: 'Nuevo chat',
+    messagePlaceholder: 'Escribe al AI...',
+    send: 'Enviar',
+    sendLoading: '...',
+    startConversation: 'Inicia una nueva conversación',
+    chatHistory: 'Historial de chat',
+    availableAi: 'IA disponible',
+    availableModels: 'Modelos disponibles',
+    currentModel: 'Modelo actual',
+    chooseModel: 'Elegir modelo',
+    noModelsAvailable: 'No hay modelos disponibles',
+    noModelsFoundYet: 'Todavía no se encontraron modelos.',
+    renameChat: 'Renombrar chat',
+    enterChatTitle: 'Introduce un título',
+    cancel: 'Cancelar',
+    save: 'Guardar',
+    saveServerUrl: 'Guardar',
+    testing: 'Probando...',
+    testConnection: 'Probar conexión',
+    ollamaServerUrl: 'URL del servidor Ollama',
+    language: 'Idioma',
+    settingsTitle: 'Configuración',
+    modelsTitle: 'Modelos',
+    serverUpdatedTitle: 'Servidor actualizado',
+    noServerUrlTitle: 'Sin URL del servidor',
+    noServerUrlMessage: 'Primero introduce la URL del servidor Ollama.',
+    noAiServerConfigured: 'No hay servidor de IA configurado',
+    noAiServerConfiguredMessage: 'Configura la URL de Ollama en Configuración primero.',
+    noConnectionTestYet: 'Todavía no se ha probado la conexión',
+    copyTextTitle: 'Copiar texto',
+    copyTextMessage: '¿Copiar este mensaje al portapapeles?',
+    copyAction: 'Copiar',
+    copyFailedTitle: 'Error al copiar',
+    copyFailedMessage: 'No se pudo copiar este mensaje.',
+    copied: 'Copiado',
+    ok: 'Aceptar',
+    info: 'Información',
+    chatFailed: 'Error del chat',
+    connectionSuccessful: 'Conexión correcta',
+    connectionFailed: 'Conexión fallida',
+    serverUpdatedMessage: 'Usando:',
+    usingLabel: 'Usando',
+    connectedTo: 'Conectado a',
+    modelsFound: 'modelo(s) encontrados',
+    noModelsReturned: 'Todavía no hubo modelos del servidor.',
+    connectionOk: 'Conexión OK',
+    selectModel: 'Seleccionar modelo',
+    modelsRefreshed: 'Modelos actualizados',
+    refreshComplete: 'Actualización completada',
+    noResponseReceived: 'No se recibió respuesta.',
+    serverRespondedAt: 'El servidor respondió en',
+    noServerUrlConfigured: 'No hay URL del servidor configurada.',
+    unknownError: 'Error desconocido',
+    justNow: 'Ahora mismo',
+  },
+  it: {
+    loading: 'Caricamento HomeAI…',
+    home: 'Home',
+    settings: 'Impostazioni',
+    newChat: 'Nuova chat',
+    messagePlaceholder: 'Scrivi all’AI...',
+    send: 'Invia',
+    sendLoading: '...',
+    startConversation: 'Avvia una nuova conversazione',
+    chatHistory: 'Cronologia chat',
+    availableAi: 'AI disponibile',
+    availableModels: 'Modelli disponibili',
+    currentModel: 'Modello attuale',
+    chooseModel: 'Scegli modello',
+    noModelsAvailable: 'Nessun modello disponibile',
+    noModelsFoundYet: 'Nessun modello trovato ancora.',
+    renameChat: 'Rinomina chat',
+    enterChatTitle: 'Inserisci un titolo',
+    cancel: 'Annulla',
+    save: 'Salva',
+    saveServerUrl: 'Salva',
+    testing: 'Verifica...',
+    testConnection: 'Verifica connessione',
+    ollamaServerUrl: 'URL server Ollama',
+    language: 'Lingua',
+    settingsTitle: 'Impostazioni',
+    modelsTitle: 'Modelli',
+    serverUpdatedTitle: 'Server aggiornato',
+    noServerUrlTitle: 'Nessun URL del server',
+    noServerUrlMessage: 'Inserisci prima l’URL del server Ollama.',
+    noAiServerConfigured: 'Nessun server AI configurato',
+    noAiServerConfiguredMessage: 'Imposta l’URL Ollama nelle Impostazioni prima.',
+    noConnectionTestYet: 'Nessun test di connessione ancora',
+    copyTextTitle: 'Copia testo',
+    copyTextMessage: 'Copiare questo messaggio negli appunti?',
+    copyAction: 'Copia',
+    copyFailedTitle: 'Copia fallita',
+    copyFailedMessage: 'Impossibile copiare questo messaggio.',
+    copied: 'Copiato',
+    ok: 'OK',
+    info: 'Info',
+    chatFailed: 'Chat fallita',
+    connectionSuccessful: 'Connessione riuscita',
+    connectionFailed: 'Connessione fallita',
+    serverUpdatedMessage: 'In uso:',
+    usingLabel: 'In uso',
+    connectedTo: 'Connesso a',
+    modelsFound: 'modello/i trovati',
+    noModelsReturned: 'Nessun modello restituito dal server ancora.',
+    connectionOk: 'Connessione OK',
+    selectModel: 'Seleziona modello',
+    modelsRefreshed: 'Modelli aggiornati',
+    refreshComplete: 'Aggiornamento completato',
+    noResponseReceived: 'Nessuna risposta ricevuta.',
+    serverRespondedAt: 'Il server ha risposto su',
+    noServerUrlConfigured: 'Nessun URL del server configurato.',
+    unknownError: 'Errore sconosciuto',
+    justNow: 'Proprio ora',
+  },
+  fr: {
+    loading: 'Chargement de HomeAI…',
+    home: 'Accueil',
+    settings: 'Réglages',
+    newChat: 'Nouveau chat',
+    messagePlaceholder: 'Écrire à l’IA...',
+    send: 'Envoyer',
+    sendLoading: '...',
+    startConversation: 'Démarrer une nouvelle conversation',
+    chatHistory: 'Historique du chat',
+    availableAi: 'IA disponible',
+    availableModels: 'Modèles disponibles',
+    currentModel: 'Modèle actuel',
+    chooseModel: 'Choisir un modèle',
+    noModelsAvailable: 'Aucun modèle disponible',
+    noModelsFoundYet: 'Aucun modèle trouvé pour le moment.',
+    renameChat: 'Renommer le chat',
+    enterChatTitle: 'Saisir un titre',
+    cancel: 'Annuler',
+    save: 'Enregistrer',
+    saveServerUrl: 'Enregistrer',
+    testing: 'Test en cours...',
+    testConnection: 'Tester la connexion',
+    ollamaServerUrl: 'URL du serveur Ollama',
+    language: 'Langue',
+    settingsTitle: 'Réglages',
+    modelsTitle: 'Modèles',
+    serverUpdatedTitle: 'Serveur mis à jour',
+    noServerUrlTitle: 'Aucune URL de serveur',
+    noServerUrlMessage: 'Veuillez d’abord saisir l’URL du serveur Ollama.',
+    noAiServerConfigured: 'Aucun serveur IA configuré',
+    noAiServerConfiguredMessage: 'Veuillez définir l’URL Ollama dans les réglages.',
+    noConnectionTestYet: 'Aucun test de connexion pour le moment',
+    copyTextTitle: 'Copier le texte',
+    copyTextMessage: 'Copier ce message dans le presse-papiers ?',
+    copyAction: 'Copier',
+    copyFailedTitle: 'Échec de la copie',
+    copyFailedMessage: 'Impossible de copier ce message.',
+    copied: 'Copié',
+    ok: 'OK',
+    info: 'Info',
+    chatFailed: 'Échec du chat',
+    connectionSuccessful: 'Connexion réussie',
+    connectionFailed: 'Connexion échouée',
+    serverUpdatedMessage: 'Utilisation :',
+    usingLabel: 'Utilisation',
+    connectedTo: 'Connecté à',
+    modelsFound: 'modèle(s) trouvé(s)',
+    noModelsReturned: 'Aucun modèle n’a encore été retourné par le serveur.',
+    connectionOk: 'Connexion OK',
+    selectModel: 'Sélectionner le modèle',
+    modelsRefreshed: 'Modèles actualisés',
+    refreshComplete: 'Actualisation terminée',
+    noResponseReceived: 'Aucune réponse reçue.',
+    serverRespondedAt: 'Le serveur a répondu sur',
+    noServerUrlConfigured: 'Aucune URL de serveur configurée.',
+    unknownError: 'Erreur inconnue',
+    justNow: 'À l’instant',
+  },
+};
+
+const languageOptions: Language[] = ['en', 'de', 'es', 'it', 'fr'];
 
 const Tab = createBottomTabNavigator();
 
@@ -119,10 +482,13 @@ export default function App() {
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODELS[0] ?? '');
   const [availableModels, setAvailableModels] = useState<string[]>(DEFAULT_MODELS);
+  const [language, setLanguage] = useState<Language>('en');
   const [isHydrated, setIsHydrated] = useState(false);
   const [lastConnectionState, setLastConnectionState] = useState<'idle' | 'success' | 'error'>('idle');
   const [lastConnectionMessage, setLastConnectionMessage] = useState('');
   const [dialog, setDialog] = useState<AppDialogConfig | null>(null);
+
+  const strings = translations[language];
 
   const showDialog = useCallback((config: AppDialogConfig) => {
     setDialog(config);
@@ -137,11 +503,15 @@ export default function App() {
       try {
         const storedUrl = await storage.getItem(STORAGE_KEYS.serverUrl);
         const storedModel = await storage.getItem(STORAGE_KEYS.selectedModel);
+        const storedLanguage = await storage.getItem(STORAGE_KEYS.language) as Language | null;
 
         const url = sanitizeUrl(storedUrl ?? DEFAULT_SERVER_URL);
         setServerUrl(url);
         if (storedModel) {
           setSelectedModel(storedModel);
+        }
+        if (storedLanguage && storedLanguage in translations) {
+          setLanguage(storedLanguage);
         }
       } catch {
         setServerUrl(DEFAULT_SERVER_URL);
@@ -169,12 +539,20 @@ export default function App() {
     storage.setItem(STORAGE_KEYS.selectedModel, selectedModel).catch(() => undefined);
   }, [selectedModel, isHydrated]);
 
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    storage.setItem(STORAGE_KEYS.language, language).catch(() => undefined);
+  }, [language, isHydrated]);
+
   const refreshModels = useCallback(async (url = serverUrl) => {
     const normalizedUrl = sanitizeUrl(url);
     if (!normalizedUrl) {
       setAvailableModels([]);
       setLastConnectionState('error');
-      setLastConnectionMessage('No server URL configured.');
+    setLastConnectionMessage(strings.noServerUrlConfigured);
       return;
     }
 
@@ -190,19 +568,19 @@ export default function App() {
           return models[0];
         });
         setLastConnectionState('success');
-        setLastConnectionMessage(`Connected to ${normalizedUrl} • ${models.length} model(s) found`);
+      setLastConnectionMessage(`${strings.connectedTo} ${normalizedUrl} • ${models.length} ${strings.modelsFound}`);
       } else {
         setAvailableModels([]);
         setLastConnectionState('success');
-        setLastConnectionMessage(`Connected to ${normalizedUrl} • no models found`);
+      setLastConnectionMessage(`${strings.connectedTo} ${normalizedUrl} • ${strings.noModelsFoundYet}`);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : strings.unknownError;
       setAvailableModels([]);
       setLastConnectionState('error');
-      setLastConnectionMessage(`Connection failed: ${message}`);
+    setLastConnectionMessage(`${strings.connectionFailed}: ${message}`);
     }
-  }, [serverUrl]);
+  }, [serverUrl, strings.connectedTo, strings.connectionFailed, strings.modelsFound, strings.noModelsFoundYet, strings.noServerUrlConfigured, strings.unknownError]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -218,7 +596,7 @@ export default function App() {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Loading HomeAI…</Text>
+        <Text style={styles.loadingText}>{strings.loading}</Text>
       </SafeAreaView>
     );
   }
@@ -254,6 +632,7 @@ export default function App() {
                   lastConnectionState={lastConnectionState}
                   lastConnectionMessage={lastConnectionMessage}
                   showDialog={showDialog}
+                  strings={strings}
                 />
               )}
             </Tab.Screen>
@@ -268,6 +647,9 @@ export default function App() {
                   setLastConnectionState={setLastConnectionState}
                   setLastConnectionMessage={setLastConnectionMessage}
                   showDialog={showDialog}
+                  language={language}
+                  setLanguage={setLanguage}
+                  strings={strings}
                 />
               )}
             </Tab.Screen>
@@ -277,7 +659,7 @@ export default function App() {
         <Modal visible={!!dialog} transparent animationType="fade" onRequestClose={dismissDialog}>
           <Pressable style={styles.modalOverlay} onPress={dismissDialog}>
             <Pressable style={styles.dialogCard} onPress={() => undefined}>
-              <Text style={styles.modalTitle}>{dialog?.title ?? 'Info'}</Text>
+              <Text style={styles.modalTitle}>{dialog?.title ?? strings.info}</Text>
               <Text style={styles.dialogMessage}>{dialog?.message ?? ''}</Text>
               <View style={styles.dialogActions}>
                 {dialog?.cancelText && (
@@ -298,7 +680,7 @@ export default function App() {
                   }}
                   style={[styles.primaryButton, styles.dialogButton, !dialog && styles.primaryButtonDisabled]}
                 >
-                  <Text style={styles.primaryButtonText}>{dialog?.confirmText ?? 'OK'}</Text>
+                  <Text style={styles.primaryButtonText}>{dialog?.confirmText ?? strings.ok}</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -318,6 +700,7 @@ type HomeScreenProps = {
   lastConnectionState: 'idle' | 'success' | 'error';
   lastConnectionMessage: string;
   showDialog: (config: AppDialogConfig) => void;
+  strings: TranslationStrings;
 };
 
 function HomeScreen({
@@ -329,10 +712,11 @@ function HomeScreen({
   lastConnectionState,
   lastConnectionMessage,
   showDialog,
+  strings,
 }: HomeScreenProps) {
   const createWelcomeThread = useCallback((): ChatThread => ({
     id: 'welcome-thread',
-    title: 'New chat',
+    title: strings.newChat,
     messages: [
       {
         id: 'welcome',
@@ -342,7 +726,7 @@ function HomeScreen({
     ],
     createdAt: Date.now(),
     updatedAt: Date.now(),
-  }), []);
+  }), [strings.newChat]);
 
   const [threads, setThreads] = useState<ChatThread[]>([createWelcomeThread()]);
   const [activeThreadId, setActiveThreadId] = useState('welcome-thread');
@@ -364,7 +748,7 @@ function HomeScreen({
           if (Array.isArray(parsed) && parsed.length > 0) {
             const normalized = parsed.map((thread) => ({
               id: thread.id ?? `thread-${Date.now()}-${Math.random()}`,
-              title: thread.title || 'New chat',
+              title: thread.title || strings.newChat,
               messages: Array.isArray(thread.messages) ? thread.messages : [],
               createdAt: thread.createdAt ?? Date.now(),
               updatedAt: thread.updatedAt ?? thread.createdAt ?? Date.now(),
@@ -415,7 +799,7 @@ function HomeScreen({
     const newThreadId = `thread-${Date.now()}`;
     const newThread: ChatThread = {
       id: newThreadId,
-      title: 'New chat',
+      title: strings.newChat,
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -423,18 +807,18 @@ function HomeScreen({
     setThreads((current) => [newThread, ...current]);
     setActiveThreadId(newThreadId);
     setDraft('');
-  }, []);
+  }, [strings.newChat]);
 
   const handleRefreshModels = useCallback(() => {
     void refreshModels().then(() => {
       const count = availableModels.length;
       if (count > 0) {
-        showDialog({ title: 'Models refreshed', message: `${count} model(s) available.`, confirmText: 'OK' });
+        showDialog({ title: strings.modelsRefreshed, message: `${count} ${strings.modelsFound}.`, confirmText: strings.ok });
       } else {
-        showDialog({ title: 'Refresh complete', message: 'No models were returned from the server yet.', confirmText: 'OK' });
+        showDialog({ title: strings.refreshComplete, message: strings.noModelsReturned, confirmText: strings.ok });
       }
     });
-  }, [availableModels.length, refreshModels, showDialog]);
+  }, [availableModels.length, refreshModels, showDialog, strings.modelsFound, strings.modelsRefreshed, strings.noModelsReturned, strings.ok, strings.refreshComplete]);
 
   const deleteThread = useCallback((threadId: string) => {
     setThreads((current) => {
@@ -520,10 +904,10 @@ function HomeScreen({
       if (Platform.OS !== 'web') {
         shouldCopy = await new Promise<boolean>((resolve) => {
           showDialog({
-            title: 'Copy text',
-            message: 'Copy this message to the clipboard?',
-            confirmText: 'Copy',
-            cancelText: 'Cancel',
+            title: strings.copyTextTitle,
+            message: strings.copyTextMessage,
+            confirmText: strings.copyAction,
+            cancelText: strings.cancel,
             onConfirm: () => resolve(true),
             onCancel: () => resolve(false),
           });
@@ -546,14 +930,14 @@ function HomeScreen({
       setTimeout(() => setCopiedText(null), 1200);
     } catch (error) {
       console.warn('Clipboard copy failed', error);
-      showDialog({ title: 'Copy failed', message: 'Unable to copy this message.', confirmText: 'OK' });
+      showDialog({ title: strings.copyFailedTitle, message: strings.copyFailedMessage, confirmText: strings.ok });
     }
-  }, [showDialog]);
+  }, [showDialog, strings.copyFailedMessage, strings.copyFailedTitle, strings.ok]);
 
   const formatThreadTimestamp = useCallback((value: number) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-      return 'Just now';
+      return strings.justNow;
     }
 
     return date.toLocaleString([], {
@@ -562,7 +946,7 @@ function HomeScreen({
       hour: 'numeric',
       minute: '2-digit',
     });
-  }, []);
+  }, [strings.justNow]);
 
   const sendMessage = useCallback(async () => {
     const trimmedMessage = draft.trim();
@@ -571,7 +955,7 @@ function HomeScreen({
     }
 
     if (!serverUrl) {
-      showDialog({ title: 'No AI server configured', message: 'Please set your Ollama URL in Settings first.', confirmText: 'OK' });
+      showDialog({ title: strings.noAiServerConfigured, message: strings.noAiServerConfiguredMessage, confirmText: strings.ok });
       return;
     }
 
@@ -597,7 +981,7 @@ function HomeScreen({
     setIsSending(true);
     updateActiveThread((thread) => ({
       ...thread,
-      title: thread.messages.length === 0 ? trimmedMessage.slice(0, 22) || 'New chat' : thread.title,
+      title: thread.messages.length === 0 ? trimmedMessage.slice(0, 22) || strings.newChat : thread.title,
       messages: [...thread.messages, userMessage, assistantMessage],
     }));
     requestAnimationFrame(() => scrollToBottom());
@@ -612,7 +996,7 @@ function HomeScreen({
         }),
       });
 
-      const assistantText = response.message?.content ?? response.content ?? 'No response received.';
+      const assistantText = response.message?.content ?? response.content ?? strings.noResponseReceived;
       updateActiveThread((thread) => ({
         ...thread,
         messages: thread.messages.map((message) =>
@@ -629,11 +1013,11 @@ function HomeScreen({
         ),
       }));
       requestAnimationFrame(() => scrollToBottom());
-      showDialog({ title: 'Chat failed', message, confirmText: 'OK' });
+      showDialog({ title: strings.chatFailed, message, confirmText: strings.ok });
     } finally {
       setIsSending(false);
     }
-  }, [activeThread, draft, isSending, selectedModel, serverUrl, scrollToBottom, showDialog, updateActiveThread]);
+  }, [activeThread, draft, isSending, selectedModel, serverUrl, scrollToBottom, showDialog, strings.chatFailed, strings.noResponseReceived, strings.ok, updateActiveThread]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -643,19 +1027,19 @@ function HomeScreen({
             <Ionicons name={sidebarOpen ? 'close' : 'menu'} size={18} color="#FFF" />
           </Pressable>
           <View style={styles.headerMeta}>
-            <Text style={styles.heading}>Home</Text>
+           <Text style={styles.heading}>{strings.home}</Text>
             <Text style={styles.serverText}>{serverUrl}</Text>
           </View>
         </View>
         <View style={styles.topBarActions}>
           <Pressable
             onPress={createNewThread}
-            style={[styles.secondaryActionButton, activeThread?.title === 'New chat' && styles.secondaryActionButtonDisabled]}
-            disabled={activeThread?.title === 'New chat'}
+           style={[styles.secondaryActionButton, activeThread?.title === strings.newChat && styles.secondaryActionButtonDisabled]}
+           disabled={activeThread?.title === strings.newChat}
           >
             <View style={styles.secondaryActionContent}>
               <Ionicons name="add" size={14} color="#FFF" />
-              <Text style={styles.secondaryActionText}>New chat</Text>
+             <Text style={styles.secondaryActionText}>{strings.newChat}</Text>
             </View>
           </Pressable>
         </View>
@@ -664,13 +1048,13 @@ function HomeScreen({
       <View style={styles.connectionRow}>
         <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
         <Text style={styles.connectionLabel}>
-          {lastConnectionMessage || 'No connection test yet'}
+          {lastConnectionMessage || strings.noConnectionTestYet}
         </Text>
       </View>
 
       <View style={styles.modelSection}>
         <View style={styles.modelHeaderRow}>
-          <Text style={styles.label}>Available AI</Text>
+          <Text style={styles.label}>{strings.availableAi}</Text>
           <View style={styles.aiActionsRow}>
             <Pressable
               onPress={handleRefreshModels}
@@ -680,7 +1064,7 @@ function HomeScreen({
               <Ionicons name="refresh" size={16} color="#FFF" />
             </Pressable>
             <Pressable style={styles.dropdown} onPress={() => setShowModelPicker(true)}>
-              <Text numberOfLines={1} ellipsizeMode="tail" style={styles.dropdownText}>{selectedModel || 'Select model'}</Text>
+             <Text numberOfLines={1} ellipsizeMode="tail" style={styles.dropdownText}>{selectedModel || strings.selectModel}</Text>
               <Ionicons name="chevron-down" size={16} color="#FFF" />
             </Pressable>
           </View>
@@ -694,14 +1078,14 @@ function HomeScreen({
         />
         <View style={[styles.drawerPanel, { transform: [{ translateX: sidebarOpen ? 0 : -320 }] }]}>
           <View style={styles.drawerHeader}>
-            <Text style={styles.drawerTitle}>Chat history</Text>
+           <Text style={styles.drawerTitle}>{strings.chatHistory}</Text>
             <Pressable onPress={() => setSidebarOpen(false)} style={styles.drawerCloseButton}>
               <Ionicons name="close" size={20} color="#FFF" />
             </Pressable>
           </View>
           <Pressable onPress={() => { createNewThread(); setSidebarOpen(false); }} style={styles.drawerNewChatButton}>
             <Ionicons name="add-circle-outline" size={18} color="#4F46E5" />
-            <Text style={styles.drawerNewChatText}>New chat</Text>
+           <Text style={styles.drawerNewChatText}>{strings.newChat}</Text>
           </Pressable>
           <View style={styles.historyList}>
             {threads.map((thread) => (
@@ -714,7 +1098,7 @@ function HomeScreen({
                   style={[styles.historyItem, activeThreadId === thread.id && styles.historyItemActive, { flex: 1 }]}
                 >
                   <Text style={[styles.historyItemText, activeThreadId === thread.id && styles.historyItemTextActive]}>
-                    {thread.title || 'New chat'}
+                   {thread.title || strings.newChat}
                   </Text>
                  <Text style={[styles.historyTimestamp, activeThreadId === thread.id && styles.historyTimestampActive]}>
                    {formatThreadTimestamp(thread.updatedAt ?? thread.createdAt ?? Date.now())}
@@ -754,7 +1138,7 @@ function HomeScreen({
         >
           <View style={styles.chatList}>
             {messages.length === 0 ? (
-              <Text style={styles.emptyChatText}>Start a new conversation</Text>
+             <Text style={styles.emptyChatText}>{strings.startConversation}</Text>
             ) : (
               messages.map((item) => (
                 <View
@@ -767,7 +1151,7 @@ function HomeScreen({
                   <Pressable onLongPress={() => copyText(item.text)} style={styles.messagePressable}>
                     <Text style={[styles.messageText, item.role === 'user' && styles.userMessageText]}>{item.text || '…'}</Text>
                     {copiedText === item.text && (
-                      <Text style={styles.copiedHint}>Copied</Text>
+                     <Text style={styles.copiedHint}>{strings.copied}</Text>
                     )}
                   </Pressable>
                 </View>
@@ -781,7 +1165,7 @@ function HomeScreen({
             <TextInput
               value={draft}
               onChangeText={setDraft}
-              placeholder="Message the AI..."
+             placeholder={strings.messagePlaceholder}
               multiline
               style={styles.input}
             />
@@ -790,7 +1174,7 @@ function HomeScreen({
               disabled={isSending || !draft.trim()}
               style={[styles.sendButton, (isSending || !draft.trim()) && styles.sendButtonDisabled]}
             >
-              <Text style={styles.sendButtonText}>{isSending ? '...' : 'Send'}</Text>
+             <Text style={styles.sendButtonText}>{isSending ? strings.sendLoading : strings.send}</Text>
             </Pressable>
           </View>
         </KeyboardStickyView>
@@ -799,9 +1183,9 @@ function HomeScreen({
       <Modal visible={showModelPicker} transparent animationType="fade" onRequestClose={() => setShowModelPicker(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowModelPicker(false)}>
           <Pressable style={styles.modalCard} onPress={() => undefined}>
-            <Text style={styles.modalTitle}>Choose model</Text>
+           <Text style={styles.modalTitle}>{strings.chooseModel}</Text>
             {availableModels.length === 0 ? (
-              <Text style={styles.emptyText}>No models available</Text>
+             <Text style={styles.emptyText}>{strings.noModelsAvailable}</Text>
             ) : (
               availableModels.map((model) => (
                 <Pressable
@@ -823,24 +1207,24 @@ function HomeScreen({
       <Modal visible={!!renameThreadId} transparent animationType="fade" onRequestClose={() => setRenameThreadId(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setRenameThreadId(null)}>
           <Pressable style={styles.modalCard} onPress={() => undefined}>
-            <Text style={styles.modalTitle}>Rename chat</Text>
+           <Text style={styles.modalTitle}>{strings.renameChat}</Text>
             <TextInput
               value={renameDraft}
               onChangeText={setRenameDraft}
-              placeholder="Enter a chat title"
+             placeholder={strings.enterChatTitle}
               autoFocus
               style={styles.renameInput}
             />
             <View style={styles.renameActions}>
               <Pressable onPress={() => setRenameThreadId(null)} style={[styles.secondaryButton, styles.renameActionButton]}>
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
+               <Text style={styles.secondaryButtonText}>{strings.cancel}</Text>
               </Pressable>
               <Pressable
                 onPress={finalizeRenameThread}
                 disabled={!renameDraft.trim()}
                 style={[styles.primaryButton, styles.renameActionButton, !renameDraft.trim() && styles.primaryButtonDisabled]}
               >
-                <Text style={[styles.primaryButtonText, !renameDraft.trim() && styles.primaryButtonTextDisabled]}>Save</Text>
+               <Text style={[styles.primaryButtonText, !renameDraft.trim() && styles.primaryButtonTextDisabled]}>{strings.save}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -859,6 +1243,9 @@ type SettingsScreenProps = {
   setLastConnectionState: React.Dispatch<React.SetStateAction<'idle' | 'success' | 'error'>>;
   setLastConnectionMessage: React.Dispatch<React.SetStateAction<string>>;
   showDialog: (config: AppDialogConfig) => void;
+  language: Language;
+  setLanguage: React.Dispatch<React.SetStateAction<Language>>;
+  strings: TranslationStrings;
 };
 
 function SettingsScreen({
@@ -870,6 +1257,9 @@ function SettingsScreen({
   setLastConnectionState,
   setLastConnectionMessage,
   showDialog,
+  language,
+  setLanguage,
+  strings,
 }: SettingsScreenProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [draftUrl, setDraftUrl] = useState(serverUrl);
@@ -883,14 +1273,14 @@ function SettingsScreen({
   const handleSave = useCallback(() => {
     const normalized = sanitizeUrl(draftUrl);
     if (!normalized) {
-      showDialog({ title: 'No server URL', message: 'Please enter your Ollama server URL first.', confirmText: 'OK' });
+      showDialog({ title: strings.noServerUrlTitle, message: strings.noServerUrlMessage, confirmText: strings.ok });
       return;
     }
 
     setServerUrl(normalized);
     refreshModels().catch(() => undefined);
-    showDialog({ title: 'Server updated', message: `Using: ${normalized}`, confirmText: 'OK' });
-  }, [draftUrl, refreshModels, setServerUrl, showDialog]);
+    showDialog({ title: strings.serverUpdatedTitle, message: `${strings.serverUpdatedMessage} ${normalized}`, confirmText: strings.ok });
+  }, [draftUrl, refreshModels, setServerUrl, showDialog, strings]);
 
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true);
@@ -898,8 +1288,8 @@ function SettingsScreen({
 
     if (!target) {
       setLastConnectionState('error');
-      setLastConnectionMessage('No server URL configured.');
-      showDialog({ title: 'No server URL', message: 'Please enter your Ollama server URL first.', confirmText: 'OK' });
+      setLastConnectionMessage(strings.noServerUrlTitle);
+      showDialog({ title: strings.noServerUrlTitle, message: strings.noServerUrlMessage, confirmText: strings.ok });
       setIsTesting(false);
       return;
     }
@@ -907,19 +1297,19 @@ function SettingsScreen({
     try {
       const result = await fetchJson<{ models?: ModelInfo[] }>(`${target}/api/tags`);
       const models = result.models ?? [];
-      const summary = models.length > 0 ? `${models.length} model(s) found` : 'Connection OK';
+      const summary = models.length > 0 ? `${models.length} ${strings.modelsFound}` : strings.connectionOk;
       setLastConnectionState('success');
-      setLastConnectionMessage(`Connected to ${target} • ${summary}`);
-      showDialog({ title: 'Connection successful', message: `Server responded at ${target}`, confirmText: 'OK' });
+      setLastConnectionMessage(`${strings.connectedTo} ${target} • ${summary}`);
+      showDialog({ title: strings.connectionSuccessful, message: `Server responded at ${target}`, confirmText: strings.ok });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setLastConnectionState('error');
-      setLastConnectionMessage(`Connection failed: ${message}`);
-      showDialog({ title: 'Connection failed', message, confirmText: 'OK' });
+      setLastConnectionMessage(`${strings.connectionFailed}: ${message}`);
+      showDialog({ title: strings.connectionFailed, message, confirmText: strings.ok });
     } finally {
       setIsTesting(false);
     }
-  }, [draftUrl, setLastConnectionMessage, setLastConnectionState, showDialog]);
+  }, [draftUrl, setLastConnectionMessage, setLastConnectionState, showDialog, strings]);
 
   return (
     <SafeAreaView style={styles.safeAreaContent}>
@@ -929,8 +1319,8 @@ function SettingsScreen({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.settingsCard}>
-          <Text style={styles.heading}>Settings</Text>
-          <Text style={[styles.label, styles.settingsLabelSpacing]}>Ollama server URL</Text>
+          <Text style={styles.heading}>{strings.settingsTitle}</Text>
+          <Text style={[styles.label, styles.settingsLabelSpacing]}>{strings.ollamaServerUrl}</Text>
           <TextInput
             value={draftUrl}
             onChangeText={setDraftUrl}
@@ -946,23 +1336,38 @@ function SettingsScreen({
               onPress={handleSave}
               disabled={isSaveDisabled}
             >
-              <Text style={[styles.primaryButtonText, isSaveDisabled && styles.primaryButtonTextDisabled]}>Save</Text>
+              <Text style={[styles.primaryButtonText, isSaveDisabled && styles.primaryButtonTextDisabled]}>{strings.save}</Text>
             </Pressable>
             <Pressable
               style={[styles.secondaryButton, styles.fullWidth, isTesting && styles.buttonDisabled]}
               onPress={handleTestConnection}
               disabled={isTesting}
             >
-              <Text style={styles.secondaryButtonText}>{isTesting ? 'Testing...' : 'Test connection'}</Text>
+              <Text style={styles.secondaryButtonText}>{isTesting ? strings.testing : strings.testConnection}</Text>
             </Pressable>
           </View>
         </View>
 
         <View style={styles.settingsCard}>
-          <Text style={styles.heading}>Models</Text>
-          <Text style={[styles.label, styles.settingsLabelSpacing]}>Current model</Text>
+          <Text style={styles.heading}>{strings.language}</Text>
+          <View style={styles.languageSelector}>
+            {languageOptions.map((option) => (
+              <Pressable
+                key={option}
+                onPress={() => setLanguage(option)}
+                style={[styles.languageChip, language === option && styles.languageChipSelected]}
+              >
+                <Text style={[styles.languageChipText, language === option && styles.languageChipTextSelected]}>{option.toUpperCase()}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.settingsCard}>
+          <Text style={styles.heading}>{strings.modelsTitle}</Text>
+          <Text style={[styles.label, styles.settingsLabelSpacing]}>{strings.currentModel}</Text>
           <Text style={styles.valueText}>{selectedModel}</Text>
-          <Text style={styles.label}>Available models</Text>
+          <Text style={styles.label}>{strings.availableModels}</Text>
           {availableModels.length > 0 ? (
             <View style={styles.modelList}>
               {availableModels.map((model) => (
@@ -970,7 +1375,7 @@ function SettingsScreen({
               ))}
             </View>
           ) : (
-            <Text style={styles.emptyText}>No models found yet.</Text>
+            <Text style={styles.emptyText}>{strings.noModelsFoundYet}</Text>
           )}
         </View>
       </KeyboardAwareScrollView>
@@ -1469,6 +1874,30 @@ const styles = StyleSheet.create({
   },
   renameActionButton: {
     flex: 1,
+  },
+  languageSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  languageChip: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  languageChipSelected: {
+    backgroundColor: '#4F46E5',
+  },
+  languageChipText: {
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  languageChipTextSelected: {
+    color: '#FFF',
   },
   settingsCard: {
     backgroundColor: '#FFF',
