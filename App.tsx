@@ -6,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   Modal,
   Platform,
@@ -49,6 +48,15 @@ type ChatThread = {
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+};
+
+type AppDialogConfig = {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
+  onCancel?: () => void;
 };
 
 const DEFAULT_SERVER_URL = 'http://192.168.88.13:11434';
@@ -113,6 +121,15 @@ export default function App() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [lastConnectionState, setLastConnectionState] = useState<'idle' | 'success' | 'error'>('idle');
   const [lastConnectionMessage, setLastConnectionMessage] = useState('');
+  const [dialog, setDialog] = useState<AppDialogConfig | null>(null);
+
+  const showDialog = useCallback((config: AppDialogConfig) => {
+    setDialog(config);
+  }, []);
+
+  const dismissDialog = useCallback(() => {
+    setDialog(null);
+  }, []);
 
   useEffect(() => {
     const hydrate = async () => {
@@ -235,6 +252,7 @@ export default function App() {
                   refreshModels={() => refreshModels(serverUrl)}
                   lastConnectionState={lastConnectionState}
                   lastConnectionMessage={lastConnectionMessage}
+                  showDialog={showDialog}
                 />
               )}
             </Tab.Screen>
@@ -248,11 +266,43 @@ export default function App() {
                   refreshModels={() => refreshModels(serverUrl)}
                   setLastConnectionState={setLastConnectionState}
                   setLastConnectionMessage={setLastConnectionMessage}
+                  showDialog={showDialog}
                 />
               )}
             </Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
+
+        <Modal visible={!!dialog} transparent animationType="fade" onRequestClose={dismissDialog}>
+          <Pressable style={styles.modalOverlay} onPress={dismissDialog}>
+            <Pressable style={styles.dialogCard} onPress={() => undefined}>
+              <Text style={styles.modalTitle}>{dialog?.title ?? 'Info'}</Text>
+              <Text style={styles.dialogMessage}>{dialog?.message ?? ''}</Text>
+              <View style={styles.dialogActions}>
+                {dialog?.cancelText && (
+                  <Pressable
+                    onPress={() => {
+                      dialog?.onCancel?.();
+                      dismissDialog();
+                    }}
+                    style={[styles.secondaryButton, styles.dialogButton]}
+                  >
+                    <Text style={styles.secondaryButtonText}>{dialog.cancelText}</Text>
+                  </Pressable>
+                )}
+                <Pressable
+                  onPress={() => {
+                    dialog?.onConfirm?.();
+                    dismissDialog();
+                  }}
+                  style={[styles.primaryButton, styles.dialogButton, !dialog && styles.primaryButtonDisabled]}
+                >
+                  <Text style={styles.primaryButtonText}>{dialog?.confirmText ?? 'OK'}</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </SafeAreaProvider>
     </KeyboardProvider>
   );
@@ -266,6 +316,7 @@ type HomeScreenProps = {
   refreshModels: () => Promise<void>;
   lastConnectionState: 'idle' | 'success' | 'error';
   lastConnectionMessage: string;
+  showDialog: (config: AppDialogConfig) => void;
 };
 
 function HomeScreen({
@@ -276,6 +327,7 @@ function HomeScreen({
   refreshModels,
   lastConnectionState,
   lastConnectionMessage,
+  showDialog,
 }: HomeScreenProps) {
   const createWelcomeThread = useCallback((): ChatThread => ({
     id: 'welcome-thread',
@@ -376,12 +428,12 @@ function HomeScreen({
     void refreshModels().then(() => {
       const count = availableModels.length;
       if (count > 0) {
-        Alert.alert('Models refreshed', `${count} model(s) available.`);
+        showDialog({ title: 'Models refreshed', message: `${count} model(s) available.`, confirmText: 'OK' });
       } else {
-        Alert.alert('Refresh complete', 'No models were returned from the server yet.');
+        showDialog({ title: 'Refresh complete', message: 'No models were returned from the server yet.', confirmText: 'OK' });
       }
     });
-  }, [availableModels.length, refreshModels]);
+  }, [availableModels.length, refreshModels, showDialog]);
 
   const deleteThread = useCallback((threadId: string) => {
     setThreads((current) => {
@@ -469,10 +521,14 @@ function HomeScreen({
       } else {
         // not using a clipboard library; Android/iOS fallback: use native share-like prompt through Alert
         const copied = await new Promise<boolean>((resolve) => {
-          Alert.alert('Copy text', 'Copy this message to the clipboard?', [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Copy', onPress: () => resolve(true) },
-          ]);
+          showDialog({
+            title: 'Copy text',
+            message: 'Copy this message to the clipboard?',
+            confirmText: 'Copy',
+            cancelText: 'Cancel',
+            onConfirm: () => resolve(true),
+            onCancel: () => resolve(false),
+          });
         });
 
         if (!copied) {
@@ -482,12 +538,12 @@ function HomeScreen({
 
       setCopiedText(text);
       setTimeout(() => setCopiedText(null), 1200);
-      Alert.alert('Copied', 'Message copied to clipboard.');
+      showDialog({ title: 'Copied', message: 'Message copied to clipboard.', confirmText: 'OK' });
     } catch (error) {
       console.warn('Clipboard copy failed', error);
-      Alert.alert('Copy failed', 'Unable to copy this message.');
+      showDialog({ title: 'Copy failed', message: 'Unable to copy this message.', confirmText: 'OK' });
     }
-  }, []);
+  }, [showDialog]);
 
   const formatThreadTimestamp = useCallback((value: number) => {
     const date = new Date(value);
@@ -510,7 +566,7 @@ function HomeScreen({
     }
 
     if (!serverUrl) {
-      Alert.alert('No AI server configured', 'Please set your Ollama URL in Settings first.');
+      showDialog({ title: 'No AI server configured', message: 'Please set your Ollama URL in Settings first.', confirmText: 'OK' });
       return;
     }
 
@@ -568,11 +624,11 @@ function HomeScreen({
         ),
       }));
       requestAnimationFrame(() => scrollToBottom());
-      Alert.alert('Chat failed', message);
+      showDialog({ title: 'Chat failed', message, confirmText: 'OK' });
     } finally {
       setIsSending(false);
     }
-  }, [activeThread, draft, isSending, selectedModel, serverUrl, scrollToBottom, updateActiveThread]);
+  }, [activeThread, draft, isSending, selectedModel, serverUrl, scrollToBottom, showDialog, updateActiveThread]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -797,6 +853,7 @@ type SettingsScreenProps = {
   refreshModels: () => Promise<void>;
   setLastConnectionState: React.Dispatch<React.SetStateAction<'idle' | 'success' | 'error'>>;
   setLastConnectionMessage: React.Dispatch<React.SetStateAction<string>>;
+  showDialog: (config: AppDialogConfig) => void;
 };
 
 function SettingsScreen({
@@ -807,6 +864,7 @@ function SettingsScreen({
   refreshModels,
   setLastConnectionState,
   setLastConnectionMessage,
+  showDialog,
 }: SettingsScreenProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [draftUrl, setDraftUrl] = useState(serverUrl);
@@ -820,14 +878,14 @@ function SettingsScreen({
   const handleSave = useCallback(() => {
     const normalized = sanitizeUrl(draftUrl);
     if (!normalized) {
-      Alert.alert('No server URL', 'Please enter your Ollama server URL first.');
+      showDialog({ title: 'No server URL', message: 'Please enter your Ollama server URL first.', confirmText: 'OK' });
       return;
     }
 
     setServerUrl(normalized);
     refreshModels().catch(() => undefined);
-    Alert.alert('Server updated', `Using: ${normalized}`);
-  }, [draftUrl, refreshModels, setServerUrl]);
+    showDialog({ title: 'Server updated', message: `Using: ${normalized}`, confirmText: 'OK' });
+  }, [draftUrl, refreshModels, setServerUrl, showDialog]);
 
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true);
@@ -836,7 +894,7 @@ function SettingsScreen({
     if (!target) {
       setLastConnectionState('error');
       setLastConnectionMessage('No server URL configured.');
-      Alert.alert('No server URL', 'Please enter your Ollama server URL first.');
+      showDialog({ title: 'No server URL', message: 'Please enter your Ollama server URL first.', confirmText: 'OK' });
       setIsTesting(false);
       return;
     }
@@ -847,16 +905,16 @@ function SettingsScreen({
       const summary = models.length > 0 ? `${models.length} model(s) found` : 'Connection OK';
       setLastConnectionState('success');
       setLastConnectionMessage(`Connected to ${target} • ${summary}`);
-      Alert.alert('Connection successful', `Server responded at ${target}`);
+      showDialog({ title: 'Connection successful', message: `Server responded at ${target}`, confirmText: 'OK' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setLastConnectionState('error');
       setLastConnectionMessage(`Connection failed: ${message}`);
-      Alert.alert('Connection failed', message);
+      showDialog({ title: 'Connection failed', message, confirmText: 'OK' });
     } finally {
       setIsTesting(false);
     }
-  }, [draftUrl, setLastConnectionMessage, setLastConnectionState]);
+  }, [draftUrl, setLastConnectionMessage, setLastConnectionState, showDialog]);
 
   return (
     <SafeAreaView style={styles.safeAreaContent}>
@@ -1340,11 +1398,38 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
+  dialogCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
   modalTitle: {
     color: '#0F172A',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
+  },
+  dialogMessage: {
+    color: '#334155',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  dialogButton: {
+    flex: 0,
+    minWidth: 100,
   },
   modelOption: {
     backgroundColor: '#F1F5F9',
