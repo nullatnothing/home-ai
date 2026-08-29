@@ -27,6 +27,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 const STORAGE_KEYS = {
   serverUrl: 'homeai.serverUrl',
   selectedModel: 'homeai.selectedModel',
+  threadHistory: 'homeai.threadHistory',
+  activeThreadId: 'homeai.activeThreadId',
 };
 
 const Tab = createBottomTabNavigator();
@@ -151,6 +153,8 @@ export default function App() {
     const normalizedUrl = sanitizeUrl(url);
     if (!normalizedUrl) {
       setAvailableModels([]);
+      setLastConnectionState('error');
+      setLastConnectionMessage('No server URL configured.');
       return;
     }
 
@@ -165,11 +169,18 @@ export default function App() {
           }
           return models[0];
         });
+        setLastConnectionState('success');
+        setLastConnectionMessage(`Connected to ${normalizedUrl} • ${models.length} model(s) found`);
       } else {
         setAvailableModels([]);
+        setLastConnectionState('success');
+        setLastConnectionMessage(`Connected to ${normalizedUrl} • no models found`);
       }
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       setAvailableModels([]);
+      setLastConnectionState('error');
+      setLastConnectionMessage(`Connection failed: ${message}`);
     }
   }, [serverUrl]);
 
@@ -264,19 +275,19 @@ function HomeScreen({
   lastConnectionState,
   lastConnectionMessage,
 }: HomeScreenProps) {
-  const [threads, setThreads] = useState<ChatThread[]>([
-    {
-      id: 'welcome-thread',
-      title: 'New chat',
-      messages: [
-        {
-          id: 'welcome',
-          role: 'assistant',
-          text: 'Hi! Ask anything using your local Ollama model.',
-        },
-      ],
-    },
-  ]);
+  const createWelcomeThread = useCallback((): ChatThread => ({
+    id: 'welcome-thread',
+    title: 'New chat',
+    messages: [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        text: 'Hi! Ask anything using your local Ollama model.',
+      },
+    ],
+  }), []);
+
+  const [threads, setThreads] = useState<ChatThread[]>([createWelcomeThread()]);
   const [activeThreadId, setActiveThreadId] = useState('welcome-thread');
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -284,6 +295,44 @@ function HomeScreen({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const scrollRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    const hydrateHistory = async () => {
+      try {
+        const storedThreads = await storage.getItem(STORAGE_KEYS.threadHistory);
+        const storedActiveId = await storage.getItem(STORAGE_KEYS.activeThreadId);
+
+        if (storedThreads) {
+          const parsed = JSON.parse(storedThreads) as ChatThread[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setThreads(parsed);
+            if (storedActiveId && parsed.some((thread) => thread.id === storedActiveId)) {
+              setActiveThreadId(storedActiveId);
+            } else {
+              setActiveThreadId(parsed[0].id);
+            }
+            return;
+          }
+        }
+
+        if (storedActiveId) {
+          setActiveThreadId(storedActiveId);
+        }
+      } catch {
+        // Ignore invalid persisted history and keep defaults.
+      }
+    };
+
+    hydrateHistory();
+  }, []);
+
+  useEffect(() => {
+    storage.setItem(STORAGE_KEYS.threadHistory, JSON.stringify(threads)).catch(() => undefined);
+  }, [threads]);
+
+  useEffect(() => {
+    storage.setItem(STORAGE_KEYS.activeThreadId, activeThreadId).catch(() => undefined);
+  }, [activeThreadId]);
 
   const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? threads[0];
   const messages = activeThread?.messages ?? [];
@@ -309,6 +358,55 @@ function HomeScreen({
     setActiveThreadId(newThreadId);
     setDraft('');
   }, []);
+
+  const deleteThread = useCallback((threadId: string) => {
+    setThreads((current) => {
+      const remaining = current.filter((thread) => thread.id !== threadId);
+      if (remaining.length === 0) {
+        const fallback = createWelcomeThread();
+        setActiveThreadId(fallback.id);
+        return [fallback];
+      }
+
+      if (threadId === activeThreadId) {
+        setActiveThreadId(remaining[0].id);
+      }
+
+      return remaining;
+    });
+  }, [activeThreadId, createWelcomeThread]);
+
+  const renameThread = useCallback((threadId: string) => {
+    const thread = threads.find((item) => item.id === threadId);
+    if (!thread) {
+      return;
+    }
+
+    Alert.prompt(
+      'Rename chat',
+      'Choose a new title',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: (value?: string) => {
+            const trimmed = value?.trim();
+            if (!trimmed) {
+              return;
+            }
+
+            setThreads((current) =>
+              current.map((item) =>
+                item.id === threadId ? { ...item, title: trimmed } : item,
+              ),
+            );
+          },
+        },
+      ],
+      'plain-text',
+      thread.title,
+    );
+  }, [threads]);
 
   const updateActiveThread = useCallback((updater: (thread: ChatThread) => ChatThread) => {
     setThreads((current) =>
@@ -449,11 +547,15 @@ function HomeScreen({
           </View>
         </View>
         <View style={styles.topBarActions}>
-          <Pressable onPress={createNewThread} style={styles.secondaryActionButton}>
-            <Text style={styles.secondaryActionText}>New chat</Text>
-          </Pressable>
-          <Pressable onPress={() => refreshModels()} style={styles.refreshButton}>
-            <Text style={styles.refreshText}>Refresh</Text>
+          <Pressable
+            onPress={createNewThread}
+            style={[styles.secondaryActionButton, activeThread?.title === 'New chat' && styles.secondaryActionButtonDisabled]}
+            disabled={activeThread?.title === 'New chat'}
+          >
+            <View style={styles.secondaryActionContent}>
+              <Ionicons name="add" size={14} color="#FFF" />
+              <Text style={styles.secondaryActionText}>New chat</Text>
+            </View>
           </Pressable>
         </View>
       </View>
@@ -468,10 +570,27 @@ function HomeScreen({
       <View style={styles.modelSection}>
         <View style={styles.modelHeaderRow}>
           <Text style={styles.label}>Available AI</Text>
-          <Pressable style={styles.dropdown} onPress={() => setShowModelPicker(true)}>
-            <Text style={styles.dropdownText}>{selectedModel || 'Select model'}</Text>
-            <Ionicons name="chevron-down" size={16} color="#FFF" />
-          </Pressable>
+          <View style={styles.aiActionsRow}>
+            <Pressable
+              onPress={async () => {
+                await refreshModels();
+                const count = availableModels.length;
+                if (count > 0) {
+                  Alert.alert('Models refreshed', `${count} model(s) available.`);
+                } else {
+                  Alert.alert('Refresh complete', 'No models were returned from the server yet.');
+                }
+              }}
+              style={styles.refreshIconButton}
+              hitSlop={8}
+            >
+              <Ionicons name="refresh" size={16} color="#FFF" />
+            </Pressable>
+            <Pressable style={styles.dropdown} onPress={() => setShowModelPicker(true)}>
+              <Text numberOfLines={1} ellipsizeMode="tail" style={styles.dropdownText}>{selectedModel || 'Select model'}</Text>
+              <Ionicons name="chevron-down" size={16} color="#FFF" />
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -487,20 +606,39 @@ function HomeScreen({
               <Ionicons name="close" size={20} color="#FFF" />
             </Pressable>
           </View>
+          <Pressable onPress={() => { createNewThread(); setSidebarOpen(false); }} style={styles.drawerNewChatButton}>
+            <Ionicons name="add-circle-outline" size={18} color="#4F46E5" />
+            <Text style={styles.drawerNewChatText}>New chat</Text>
+          </Pressable>
           <View style={styles.historyList}>
             {threads.map((thread) => (
-              <Pressable
-                key={thread.id}
-                onPress={() => {
-                  setActiveThreadId(thread.id);
-                  setSidebarOpen(false);
-                }}
-                style={[styles.historyItem, activeThreadId === thread.id && styles.historyItemActive]}
-              >
-                <Text style={[styles.historyItemText, activeThreadId === thread.id && styles.historyItemTextActive]}>
-                  {thread.title || 'New chat'}
-                </Text>
-              </Pressable>
+              <View key={thread.id} style={styles.historyItemRow}>
+                <Pressable
+                  onPress={() => {
+                    setActiveThreadId(thread.id);
+                    setSidebarOpen(false);
+                  }}
+                  style={[styles.historyItem, activeThreadId === thread.id && styles.historyItemActive, { flex: 1 }]}
+                >
+                  <Text style={[styles.historyItemText, activeThreadId === thread.id && styles.historyItemTextActive]}>
+                    {thread.title || 'New chat'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => renameThread(thread.id)}
+                  style={styles.historyActionButton}
+                  hitSlop={8}
+                >
+                  <Ionicons name="pencil-outline" size={15} color={activeThreadId === thread.id ? '#FFF' : '#475569'} />
+                </Pressable>
+                <Pressable
+                  onPress={() => deleteThread(thread.id)}
+                  style={styles.historyActionButton}
+                  hitSlop={8}
+                >
+                  <Ionicons name="trash-outline" size={16} color={activeThreadId === thread.id ? '#FFF' : '#475569'} />
+                </Pressable>
+              </View>
             ))}
           </View>
         </View>
@@ -787,15 +925,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryActionButton: {
-    backgroundColor: '#1E293B',
-    paddingVertical: 7,
-    paddingHorizontal: 10,
+    backgroundColor: '#4F46E5',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
+  },
+  secondaryActionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   secondaryActionText: {
     color: '#FFF',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 12,
+  },
+  secondaryActionButtonDisabled: {
+    opacity: 0.5,
   },
   connectionRow: {
     flexDirection: 'row',
@@ -863,6 +1009,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#4F46E5',
   },
+  drawerNewChatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#4F46E5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  drawerNewChatText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   historySection: {
     paddingHorizontal: 16,
     paddingTop: 10,
@@ -870,6 +1032,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   historyList: {
+    gap: 8,
+  },
+  historyItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   historyItem: {
@@ -880,6 +1047,14 @@ const styles = StyleSheet.create({
   },
   historyItemActive: {
     backgroundColor: '#4F46E5',
+  },
+  historyActionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   historyItemText: {
     color: '#1E293B',
@@ -907,6 +1082,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 0,
   },
+  aiActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 'auto',
+  },
+  refreshIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -915,14 +1104,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    minWidth: 140,
-    maxWidth: '68%',
+    minWidth: 200,
+    maxWidth: '70%',
   },
   dropdownText: {
     color: '#FFF',
     fontWeight: '600',
     fontSize: 12,
     flexShrink: 1,
+    textAlign: 'left',
+    maxWidth: '80%',
+    overflow: 'hidden',
   },
   modelPickerWrap: {
     flexDirection: 'row',
