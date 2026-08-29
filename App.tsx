@@ -1,13 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView, KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 const STORAGE_KEYS = {
@@ -180,47 +180,55 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <NavigationContainer>
-        <Tab.Navigator
-          initialRouteName="Home"
-          screenOptions={{
-            tabBarActiveTintColor: '#4F46E5',
-            tabBarStyle: { backgroundColor: '#0F172A', borderTopWidth: 0 },
-            headerStyle: { backgroundColor: '#0F172A' },
-            headerTintColor: '#F8FAFC',
-          }}
-        >
-          <Tab.Screen name="Home">
-            {() => (
-              <HomeScreen
-                serverUrl={serverUrl}
-                availableModels={availableModels}
-                selectedModel={selectedModel}
-                setSelectedModel={setSelectedModel}
-                refreshModels={() => refreshModels(serverUrl)}
-                lastConnectionState={lastConnectionState}
-                lastConnectionMessage={lastConnectionMessage}
-              />
-            )}
-          </Tab.Screen>
-          <Tab.Screen name="Settings">
-            {() => (
-              <SettingsScreen
-                serverUrl={serverUrl}
-                setServerUrl={setServerUrl}
-                selectedModel={selectedModel}
-                availableModels={availableModels}
-                refreshModels={() => refreshModels(serverUrl)}
-                setLastConnectionState={setLastConnectionState}
-                setLastConnectionMessage={setLastConnectionMessage}
-              />
-            )}
-          </Tab.Screen>
-        </Tab.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <KeyboardProvider>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <NavigationContainer>
+          <Tab.Navigator
+            initialRouteName="Home"
+            screenOptions={({ route }) => ({
+              headerShown: false,
+              tabBarActiveTintColor: '#4F46E5',
+              tabBarInactiveTintColor: '#94A3B8',
+              tabBarStyle: { backgroundColor: '#0F172A', borderTopWidth: 0 },
+              headerStyle: { backgroundColor: '#0F172A' },
+              headerTintColor: '#F8FAFC',
+              tabBarIcon: ({ color, size }) => {
+                const iconName = route.name === 'Home' ? 'home' : 'settings';
+                return <Ionicons name={iconName as any} size={size} color={color} />;
+              },
+            })}
+          >
+            <Tab.Screen name="Home" options={{ headerShown: false }}>
+              {() => (
+                <HomeScreen
+                  serverUrl={serverUrl}
+                  availableModels={availableModels}
+                  selectedModel={selectedModel}
+                  setSelectedModel={setSelectedModel}
+                  refreshModels={() => refreshModels(serverUrl)}
+                  lastConnectionState={lastConnectionState}
+                  lastConnectionMessage={lastConnectionMessage}
+                />
+              )}
+            </Tab.Screen>
+            <Tab.Screen name="Settings">
+              {() => (
+                <SettingsScreen
+                  serverUrl={serverUrl}
+                  setServerUrl={setServerUrl}
+                  selectedModel={selectedModel}
+                  availableModels={availableModels}
+                  refreshModels={() => refreshModels(serverUrl)}
+                  setLastConnectionState={setLastConnectionState}
+                  setLastConnectionMessage={setLastConnectionMessage}
+                />
+              )}
+            </Tab.Screen>
+          </Tab.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </KeyboardProvider>
   );
 }
 
@@ -356,44 +364,46 @@ function HomeScreen({
         </View>
       </View>
 
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View
-            style={[
-              styles.messageBubble,
-              item.role === 'user' ? styles.userBubble : styles.assistantBubble,
-            ]}
-          >
-            <Text style={styles.messageText}>{item.text || '…'}</Text>
-          </View>
-        )}
-        contentContainerStyle={styles.chatList}
+      <KeyboardAwareScrollView
+        style={styles.chatScreen}
+        contentContainerStyle={styles.chatScrollContent}
         keyboardShouldPersistTaps="handled"
-      />
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
+        bottomOffset={16}
+        extraKeyboardSpace={16}
       >
-        <View style={styles.inputRow}>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Message the AI..."
-            multiline
-            style={styles.input}
-          />
-          <Pressable
-            onPress={sendMessage}
-            disabled={isSending || !draft.trim()}
-            style={[styles.sendButton, (isSending || !draft.trim()) && styles.sendButtonDisabled]}
-          >
-            <Text style={styles.sendButtonText}>{isSending ? '...' : 'Send'}</Text>
-          </Pressable>
+        <View style={styles.chatList}>
+          {messages.map((item) => (
+            <View
+              key={item.id}
+              style={[
+                styles.messageBubble,
+                item.role === 'user' ? styles.userBubble : styles.assistantBubble,
+              ]}
+            >
+              <Text style={[styles.messageText, item.role === 'user' && styles.userMessageText]}>{item.text || '…'}</Text>
+            </View>
+          ))}
         </View>
-      </KeyboardAvoidingView>
+
+        <View style={styles.inputComposer}>
+          <View style={styles.inputRow}>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Message the AI..."
+              multiline
+              style={styles.input}
+            />
+            <Pressable
+              onPress={sendMessage}
+              disabled={isSending || !draft.trim()}
+              style={[styles.sendButton, (isSending || !draft.trim()) && styles.sendButtonDisabled]}
+            >
+              <Text style={styles.sendButtonText}>{isSending ? '...' : 'Send'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -467,46 +477,52 @@ function SettingsScreen({
 
   return (
     <SafeAreaView style={styles.safeAreaContent}>
-      <View style={styles.settingsCard}>
-        <Text style={styles.heading}>Settings</Text>
-        <Text style={styles.label}>Ollama server URL</Text>
-        <TextInput
-          value={draftUrl}
-          onChangeText={setDraftUrl}
-          placeholder="http://192.168.1.10:11434"
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-        />
+      <KeyboardAwareScrollView
+        bottomOffset={20}
+        contentContainerStyle={styles.settingsScrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.settingsCard}>
+          <Text style={styles.heading}>Settings</Text>
+          <Text style={styles.label}>Ollama server URL</Text>
+          <TextInput
+            value={draftUrl}
+            onChangeText={setDraftUrl}
+            placeholder="http://192.168.1.10:11434"
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+          />
 
-        <View style={styles.buttonRow}>
-          <Pressable style={[styles.primaryButton, styles.fullWidth]} onPress={handleSave}>
-            <Text style={styles.primaryButtonText}>Save</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.secondaryButton, styles.fullWidth, isTesting && styles.buttonDisabled]}
-            onPress={handleTestConnection}
-            disabled={isTesting}
-          >
-            <Text style={styles.secondaryButtonText}>{isTesting ? 'Testing...' : 'Test connection'}</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.settingsCard}>
-        <Text style={styles.label}>Current model</Text>
-        <Text style={styles.valueText}>{selectedModel}</Text>
-        <Text style={styles.label}>Available models</Text>
-        {availableModels.length > 0 ? (
-          <View style={styles.modelList}>
-            {availableModels.map((model) => (
-              <Text key={model} style={styles.modelListItem}>{model}</Text>
-            ))}
+          <View style={styles.buttonRow}>
+            <Pressable style={[styles.primaryButton, styles.fullWidth]} onPress={handleSave}>
+              <Text style={styles.primaryButtonText}>Save</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.secondaryButton, styles.fullWidth, isTesting && styles.buttonDisabled]}
+              onPress={handleTestConnection}
+              disabled={isTesting}
+            >
+              <Text style={styles.secondaryButtonText}>{isTesting ? 'Testing...' : 'Test connection'}</Text>
+            </Pressable>
           </View>
-        ) : (
-          <Text style={styles.emptyText}>No models found yet.</Text>
-        )}
-      </View>
+        </View>
+
+        <View style={styles.settingsCard}>
+          <Text style={styles.label}>Current model</Text>
+          <Text style={styles.valueText}>{selectedModel}</Text>
+          <Text style={styles.label}>Available models</Text>
+          {availableModels.length > 0 ? (
+            <View style={styles.modelList}>
+              {availableModels.map((model) => (
+                <Text key={model} style={styles.modelListItem}>{model}</Text>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>No models found yet.</Text>
+          )}
+        </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -520,6 +536,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
     padding: 16,
+  },
+  settingsScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -612,7 +632,17 @@ const styles = StyleSheet.create({
   modelChipTextActive: {
     color: '#FFF',
   },
+  chatScreen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  chatScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 12,
+  },
   chatList: {
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 20,
@@ -638,11 +668,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  userMessageText: {
+    color: '#FFF',
+  },
+  inputComposer: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFF',
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
     gap: 10,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
