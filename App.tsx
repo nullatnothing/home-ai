@@ -34,8 +34,8 @@ type ModelInfo = {
   name: string;
 };
 
-const DEFAULT_SERVER_URL = 'http://localhost:11434';
-const DEFAULT_MODELS = ['llama3.2', 'llama3.1', 'mistral'];
+const DEFAULT_SERVER_URL = 'http://192.168.88.13:11434';
+const DEFAULT_MODELS: string[] = [];
 
 const storage = {
   async getItem(key: string): Promise<string | null> {
@@ -61,7 +61,7 @@ const storage = {
 function sanitizeUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
   if (!trimmed) {
-    return DEFAULT_SERVER_URL;
+    return '';
   }
 
   if (/^https?:\/\//i.test(trimmed)) {
@@ -91,7 +91,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export default function App() {
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODELS[0]);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODELS[0] ?? '');
   const [availableModels, setAvailableModels] = useState<string[]>(DEFAULT_MODELS);
   const [isHydrated, setIsHydrated] = useState(false);
   const [lastConnectionState, setLastConnectionState] = useState<'idle' | 'success' | 'error'>('idle');
@@ -108,8 +108,8 @@ export default function App() {
         if (storedModel) {
           setSelectedModel(storedModel);
         }
-      } catch (error) {
-        console.warn('Failed to read saved settings', error);
+      } catch {
+        setServerUrl(DEFAULT_SERVER_URL);
       } finally {
         setIsHydrated(true);
       }
@@ -123,9 +123,7 @@ export default function App() {
       return;
     }
 
-    storage.setItem(STORAGE_KEYS.serverUrl, serverUrl).catch((error) => {
-      console.warn('Failed to save server url', error);
-    });
+    storage.setItem(STORAGE_KEYS.serverUrl, serverUrl).catch(() => undefined);
   }, [serverUrl, isHydrated]);
 
   useEffect(() => {
@@ -133,14 +131,18 @@ export default function App() {
       return;
     }
 
-    storage.setItem(STORAGE_KEYS.selectedModel, selectedModel).catch((error) => {
-      console.warn('Failed to save selected model', error);
-    });
+    storage.setItem(STORAGE_KEYS.selectedModel, selectedModel).catch(() => undefined);
   }, [selectedModel, isHydrated]);
 
   const refreshModels = useCallback(async (url = serverUrl) => {
+    const normalizedUrl = sanitizeUrl(url);
+    if (!normalizedUrl) {
+      setAvailableModels([]);
+      return;
+    }
+
     try {
-      const response = await fetchJson<{ models?: ModelInfo[] }>(`${sanitizeUrl(url)}/api/tags`);
+      const response = await fetchJson<{ models?: ModelInfo[] }>(`${normalizedUrl}/api/tags`);
       const models = (response.models ?? []).map((item) => item.name).filter(Boolean);
       if (models.length > 0) {
         setAvailableModels(models);
@@ -150,10 +152,11 @@ export default function App() {
           }
           return models[0];
         });
+      } else {
+        setAvailableModels([]);
       }
-    } catch (error) {
-      console.warn('Failed to load models', error);
-      setAvailableModels(DEFAULT_MODELS);
+    } catch {
+      setAvailableModels([]);
     }
   }, [serverUrl]);
 
@@ -263,6 +266,11 @@ function HomeScreen({
   const sendMessage = useCallback(async () => {
     const trimmedMessage = draft.trim();
     if (!trimmedMessage || isSending) {
+      return;
+    }
+
+    if (!serverUrl) {
+      Alert.alert('No AI server configured', 'Please set your Ollama URL in Settings first.');
       return;
     }
 
@@ -418,6 +426,11 @@ function SettingsScreen({
 
   const handleSave = useCallback(() => {
     const normalized = sanitizeUrl(draftUrl);
+    if (!normalized) {
+      Alert.alert('No server URL', 'Please enter your Ollama server URL first.');
+      return;
+    }
+
     setServerUrl(normalized);
     refreshModels().catch(() => undefined);
     Alert.alert('Server updated', `Using: ${normalized}`);
@@ -426,6 +439,14 @@ function SettingsScreen({
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true);
     const target = sanitizeUrl(draftUrl);
+
+    if (!target) {
+      setLastConnectionState('error');
+      setLastConnectionMessage('No server URL configured.');
+      Alert.alert('No server URL', 'Please enter your Ollama server URL first.');
+      setIsTesting(false);
+      return;
+    }
 
     try {
       const result = await fetchJson<{ models?: ModelInfo[] }>(`${target}/api/tags`);
