@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -17,7 +16,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { KeyboardAwareScrollView, KeyboardProvider } from 'react-native-keyboard-controller';
+import {
+  KeyboardAwareScrollView,
+  KeyboardEvents,
+  KeyboardProvider,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 const STORAGE_KEYS = {
@@ -318,6 +322,16 @@ function HomeScreen({
     });
   }, []);
 
+  useEffect(() => {
+    const subscription = KeyboardEvents.addListener('keyboardDidShow', () => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd?.({ animated: true });
+      });
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   const copyText = useCallback(async (text: string) => {
     if (!text) {
       return;
@@ -462,7 +476,10 @@ function HomeScreen({
       </View>
 
       <View pointerEvents={sidebarOpen ? 'auto' : 'none'} style={styles.drawerOverlay}>
-        <Pressable style={styles.drawerScrim} onPress={() => setSidebarOpen(false)} />
+        <Pressable
+          style={[styles.drawerScrim, { opacity: sidebarOpen ? 1 : 0 }]}
+          onPress={() => setSidebarOpen(false)}
+        />
         <View style={[styles.drawerPanel, { transform: [{ translateX: sidebarOpen ? 0 : -320 }] }]}>
           <Text style={styles.drawerTitle}>Chat history</Text>
           <View style={styles.historyList}>
@@ -484,18 +501,15 @@ function HomeScreen({
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.chatContainer}>
         <KeyboardAwareScrollView
           ref={scrollRef}
           style={styles.chatScreen}
           contentContainerStyle={styles.chatScrollContent}
           keyboardShouldPersistTaps="handled"
-          bottomOffset={0}
+          bottomOffset={12}
           extraKeyboardSpace={0}
+          mode="layout"
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
         >
@@ -523,7 +537,7 @@ function HomeScreen({
           </View>
         </KeyboardAwareScrollView>
 
-        <View style={styles.inputComposer}>
+        <KeyboardStickyView style={styles.inputComposer} offset={{ closed: 0, opened: 40 }}>
           <View style={styles.inputRow}>
             <TextInput
               value={draft}
@@ -540,8 +554,8 @@ function HomeScreen({
               <Text style={styles.sendButtonText}>{isSending ? '...' : 'Send'}</Text>
             </Pressable>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardStickyView>
+      </View>
 
       <Modal visible={showModelPicker} transparent animationType="fade" onRequestClose={() => setShowModelPicker(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowModelPicker(false)}>
