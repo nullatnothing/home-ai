@@ -1027,7 +1027,7 @@ function HomeScreen({
             <Ionicons name={sidebarOpen ? 'close' : 'menu'} size={18} color="#FFF" />
           </Pressable>
           <View style={styles.headerMeta}>
-           <Text style={[styles.heading, styles.topBarHeading]}>{strings.home}</Text>
+           <Text style={styles.heading}>{strings.home}</Text>
             <Text style={styles.serverText}>{serverUrl}</Text>
           </View>
         </View>
@@ -1386,11 +1386,11 @@ function SettingsScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#F8FAFC',
   },
   safeAreaContent: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#F8FAFC',
     padding: 16,
   },
   settingsScrollContent: {
@@ -1401,7 +1401,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#F8FAFC',
   },
   loadingText: {
     marginTop: 12,
@@ -1430,9 +1430,6 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 18,
     fontWeight: '700',
-  },
-  topBarHeading: {
-    color: '#F8FAFC',
   },
   serverText: {
     color: '#CBD5E1',
