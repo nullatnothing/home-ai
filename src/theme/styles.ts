@@ -8,6 +8,7 @@ export const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#1E293B' },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, backgroundColor: '#0F172A', minHeight: 56, width: '100%', marginBottom: 0 },
+  settingsTopBar: { marginBottom: 12, paddingLeft: 14, paddingRight: 14 },
   topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   headerMeta: { flexShrink: 1 },
   heading: { color: '#0F172A', fontSize: 18, fontWeight: '700' },

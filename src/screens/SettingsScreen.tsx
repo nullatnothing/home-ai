@@ -40,7 +40,7 @@ export function SettingsScreen({ appState, setAppState, strings }: Props) {
 
   return (
     <ScrollView style={styles.safeArea} contentContainerStyle={styles.settingsScrollContent}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, styles.settingsTopBar]}>
         <View style={styles.topBarLeft}>
           <View style={styles.headerMeta}>
             <Text style={[styles.heading, styles.topBarHeading]}>{strings.settingsTitle}</Text>
