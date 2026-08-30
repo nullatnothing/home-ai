@@ -21,6 +21,15 @@ const makeThread = (title: string, welcomeText: string): ChatThread => {
   return { id: String(now), title, messages: [welcomeMessage], createdAt: now, updatedAt: now };
 };
 
+const normalizeWelcomeMessage = (thread: ChatThread, welcomeText: string): ChatThread => ({
+  ...thread,
+  messages: thread.messages.map((message) => (
+    message.role === 'assistant' && message.id.endsWith('-welcome')
+      ? { ...message, text: welcomeText }
+      : message
+  )),
+});
+
 export function HomeScreen({ appState, setAppState, strings }: Props) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState('');
@@ -32,7 +41,14 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
-  useEffect(() => { loadChatThreads().then(({ threads: loaded, activeThreadId: stored }) => { setThreads(loaded); setActiveThreadId(stored || loaded[0]?.id || ''); }).catch(() => undefined); }, []);
+  useEffect(() => {
+    loadChatThreads().then(({ threads: loaded, activeThreadId: stored }) => {
+      const normalized = loaded.map((thread) => normalizeWelcomeMessage(thread, strings.welcomeMessage));
+      setThreads(normalized);
+      setActiveThreadId(stored || normalized[0]?.id || '');
+    }).catch(() => undefined);
+  }, [strings.welcomeMessage]);
+
   useEffect(() => { persistChatThreads(threads, activeThreadId).catch(() => undefined); }, [threads, activeThreadId]);
 
   const activeThread = useMemo(() => threads.find((thread) => thread.id === activeThreadId) ?? null, [threads, activeThreadId]);
