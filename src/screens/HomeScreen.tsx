@@ -9,6 +9,34 @@ import { ChatMessage, ChatThread, TranslationStrings } from '../types';
 
 type Props = { appState: AppState; setAppState: React.Dispatch<React.SetStateAction<AppState>>; strings: TranslationStrings };
 
+export const KEYBOARD_AVOIDING_BEHAVIOR = 'padding';
+export const KEYBOARD_VERTICAL_OFFSET = 88;
+
+export function buildChatRequest(selectedModel: string, previousMessages: ChatMessage[], nextUserText: string) {
+  return {
+    model: selectedModel,
+    messages: [
+      ...previousMessages.map(({ role, text: content }) => ({ role, content })),
+      { role: 'user', content: nextUserText },
+    ],
+  };
+}
+
+export function resolveAssistantText(response: { message?: { content?: string }; content?: string; response?: string } | undefined, fallback: string) {
+  if (typeof response?.message?.content === 'string') return response.message.content;
+  if (typeof response?.content === 'string') return response.content;
+  if (typeof response?.response === 'string') return response.response;
+  return fallback;
+}
+
+export function getConnectionStatus(appState: AppState, strings: TranslationStrings) {
+  return appState.lastConnectionState === 'success'
+    ? { label: strings.connectionSuccessful || strings.connectionOk, color: '#22C55E' }
+    : appState.lastConnectionState === 'error'
+      ? { label: strings.connectionFailed, color: '#EF4444' }
+      : { label: strings.noConnectionTestYet, color: '#94A3B8' };
+}
+
 const formatTimestamp = (value: number) => {
   if (!value) return '';
   const date = new Date(value);
@@ -52,11 +80,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   useEffect(() => { persistChatThreads(threads, activeThreadId).catch(() => undefined); }, [threads, activeThreadId]);
 
   const activeThread = useMemo(() => threads.find((thread) => thread.id === activeThreadId) ?? null, [threads, activeThreadId]);
-  const connectionStatus = appState.lastConnectionState === 'success'
-    ? { label: strings.connectionSuccessful || strings.connectionOk, color: '#22C55E' }
-    : appState.lastConnectionState === 'error'
-      ? { label: strings.connectionFailed, color: '#EF4444' }
-      : { label: strings.noConnectionTestYet, color: '#94A3B8' };
+  const connectionStatus = getConnectionStatus(appState, strings);
   const lastModelRefreshKey = useRef('');
 
   useEffect(() => {
@@ -137,11 +161,29 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     updateThread(threadId, (thread) => ({ ...thread, messages: [...thread.messages, userMessage], updatedAt: Date.now(), title: thread.messages.length ? thread.title : text.slice(0, 24) }));
     try {
       const baseUrl = appState.serverUrl.replace(/\/+$/, '');
-      const response = await fetchJson<{ message?: string }>(`${baseUrl}/api/chat`, {
-        method: 'POST',
-        body: JSON.stringify({ model: appState.selectedModel, messages: [...(threads.find((thread) => thread.id === threadId)?.messages ?? []), userMessage] }),
+      const threadMessages = threads.find((thread) => thread.id === threadId)?.messages ?? [];
+      const requestBody = buildChatRequest(appState.selectedModel, threadMessages, text);
+
+      console.debug('[HomeAI] sending chat request', {
+        url: `${baseUrl}/api/chat`,
+        model: appState.selectedModel,
+        messageCount: requestBody.messages.length,
+        lastUserMessage: text,
       });
-      const assistantMessage: ChatMessage = { id: `${Date.now()}-assistant`, role: 'assistant', text: response.message || strings.noResponseReceived };
+
+      const response = await fetchJson<{ message?: { content?: string }; content?: string; response?: string; error?: string }>(`${baseUrl}/api/chat`, {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
+      });
+
+      console.debug('[HomeAI] Ollama response', {
+        url: `${baseUrl}/api/chat`,
+        response,
+        assistantPreview: resolveAssistantText(response, '').slice(0, 500),
+      });
+
+      const assistantText = resolveAssistantText(response, strings.noResponseReceived);
+      const assistantMessage: ChatMessage = { id: `${Date.now()}-assistant`, role: 'assistant', text: assistantText };
       updateThread(threadId, (thread) => ({ ...thread, messages: [...thread.messages, assistantMessage], updatedAt: Date.now() }));
     } catch (error: any) {
       setAppState((current) => ({ ...current, dialog: { title: strings.chatFailed, message: error?.message ?? strings.unknownError, confirmText: strings.ok } }));
@@ -190,8 +232,18 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
         </View>
       </View>
 
-      <KeyboardAvoidingView style={styles.chatContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-        <ScrollView contentContainerStyle={styles.chatList}>
+      <KeyboardAvoidingView
+        style={styles.chatContainer}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        enabled
+      >
+        <ScrollView
+          style={styles.chatScrollContainer}
+          contentContainerStyle={styles.chatScrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {activeThread?.messages.length ? activeThread.messages.map((message) => (
             <Pressable key={message.id} onLongPress={() => copyMessage(message.text, message.id)} style={[styles.messageBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble]}>
               <Text style={[styles.messageText, message.role === 'user' && styles.userMessageText]}>{message.text}</Text>
