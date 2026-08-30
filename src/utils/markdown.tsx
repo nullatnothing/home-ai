@@ -134,7 +134,7 @@ function renderMarkdownBlock(
     );
   }
 
-  if (/^([-*_])(?:\s*\1){2,}\s*$/.test(trimmed)) {
+  if (isHorizontalRule(trimmed)) {
     return (
       <Text
         key={`rule-${index}`}
@@ -207,12 +207,141 @@ function renderMarkdownBlock(
   );
 }
 
+function isHorizontalRule(value: string): boolean {
+  return /^-{3,}\s*$|^\*{3,}\s*$|^_{3,}\s*$/.test(value.trim());
+}
+
+function isListItem(value: string): boolean {
+  return /^([-*+]\s+|\d+\.\s+)/.test(value.trim());
+}
+
+function isHeading(value: string): boolean {
+  return /^#{1,6}\s+/.test(value.trim());
+}
+
+function isCodeFence(value: string): boolean {
+  return /^```/.test(value.trim());
+}
+
+function normalizeMarkdownSpacing(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const normalized: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    const trimmed = rawLine.trim();
+
+    if (!trimmed) {
+      if (normalized.length > 0 && normalized[normalized.length - 1] !== "") {
+        normalized.push("");
+      }
+      continue;
+    }
+
+    const previousTrimmed = normalized[normalized.length - 1]?.trim() ?? "";
+    const nextTrimmed = lines[index + 1]?.trim() ?? "";
+
+    const isBlockLine =
+      isHeading(trimmed) ||
+      isListItem(trimmed) ||
+      isHorizontalRule(trimmed) ||
+      isCodeFence(trimmed);
+
+    const needsLeadingBlankLine =
+      previousTrimmed.length > 0 &&
+      isBlockLine &&
+      !isHeading(previousTrimmed) &&
+      !isListItem(previousTrimmed) &&
+      !isHorizontalRule(previousTrimmed) &&
+      !isCodeFence(previousTrimmed);
+
+    if (needsLeadingBlankLine) {
+      normalized.push("");
+    }
+
+    normalized.push(rawLine);
+
+    const shouldAddTrailingBlankLine =
+      isBlockLine &&
+      nextTrimmed.length > 0 &&
+      !isHeading(nextTrimmed) &&
+      !isListItem(nextTrimmed) &&
+      !isHorizontalRule(nextTrimmed) &&
+      !isCodeFence(nextTrimmed);
+
+    if (shouldAddTrailingBlankLine) {
+      normalized.push("");
+    }
+  }
+
+  return normalized.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function formatMarkdownSeparators(text: string) {
-  return text
+  return normalizeMarkdownSpacing(text)
     .replace(/```/g, "\n```\n")
     .replace(/(^|\n)\s*---\s*(?=\n|$)/g, "$1\n---\n")
-    .replace(/(^|\n)\s*[-*+]\s+(?=\n|$)/g, "$1\n")
+    .replace(/(?:\n){3,}/g, "\n\n")
     .trim();
+}
+
+function splitMarkdownBlocks(text: string): string[] {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const blocks: string[] = [];
+  let current = "";
+
+  const flushCurrent = () => {
+    if (!current.trim()) return;
+    blocks.push(current.trim());
+    current = "";
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    const trimmed = rawLine.trim();
+
+    if (!trimmed) {
+      flushCurrent();
+      continue;
+    }
+
+    if (trimmed.startsWith("```")) {
+      flushCurrent();
+      const codeLines = [rawLine];
+
+      while (index + 1 < lines.length && !lines[index + 1].trim().startsWith("```")) {
+        index += 1;
+        codeLines.push(lines[index]);
+      }
+
+      if (index + 1 < lines.length) {
+        index += 1;
+        codeLines.push(lines[index]);
+      }
+
+      blocks.push(codeLines.join("\n").trim());
+      continue;
+    }
+
+    if (/^#{1,6}\s+/.test(trimmed)) {
+      flushCurrent();
+      blocks.push(trimmed);
+      continue;
+    }
+
+    if (current.trim() && /^#{1,6}\s+/.test(current.trim())) {
+      flushCurrent();
+    }
+
+    current = current ? `${current}\n${rawLine}` : rawLine;
+  }
+
+  flushCurrent();
+  return blocks.filter(Boolean);
+}
+
+function replaceLatexArrows(value: string): string {
+  return value.replace(/\$?\\rightarrow\$?/g, "→").replace(/\$?\\leftarrow\$?/g, "←");
 }
 
 export function renderMarkdownText(
@@ -220,12 +349,20 @@ export function renderMarkdownText(
   overrides: MarkdownRenderOptions = {},
 ): React.ReactNode {
   const options = { ...defaultOptions, ...overrides } as Required<MarkdownRenderOptions>;
-  const normalizedText = formatMarkdownSeparators(text);
-  const blocks = normalizedText
-    .replace(/\r\n/g, "\n")
-    .split(/\n{2,}/)
+  const normalizedText = replaceLatexArrows(formatMarkdownSeparators(text));
+  const blocks = splitMarkdownBlocks(normalizedText)
     .map((block, index) => renderMarkdownBlock(block, options, index))
-    .filter(Boolean);
+    .filter(Boolean) as React.ReactNode[];
 
-  return blocks.length ? blocks : null;
+  if (!blocks.length) {
+    return null;
+  }
+
+  return blocks.flatMap((block, index) => {
+    if (index === 0) {
+      return [block];
+    }
+
+    return ["\n\n", block];
+  });
 }
