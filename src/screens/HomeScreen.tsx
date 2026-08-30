@@ -52,7 +52,11 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   useEffect(() => { persistChatThreads(threads, activeThreadId).catch(() => undefined); }, [threads, activeThreadId]);
 
   const activeThread = useMemo(() => threads.find((thread) => thread.id === activeThreadId) ?? null, [threads, activeThreadId]);
-  const connectionStatus = appState.lastConnectionState === 'success' ? { label: appState.lastConnectionMessage || strings.connectionOk, color: '#22C55E' } : appState.lastConnectionState === 'error' ? { label: appState.lastConnectionMessage || strings.connectionFailed, color: '#EF4444' } : { label: strings.noConnectionTestYet, color: '#94A3B8' };
+  const connectionStatus = appState.lastConnectionState === 'success'
+    ? { label: strings.connectionSuccessful || strings.connectionOk, color: '#22C55E' }
+    : appState.lastConnectionState === 'error'
+      ? { label: strings.connectionFailed, color: '#EF4444' }
+      : { label: strings.noConnectionTestYet, color: '#94A3B8' };
   const lastModelRefreshKey = useRef('');
 
   useEffect(() => {
