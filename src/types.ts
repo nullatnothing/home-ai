@@ -8,6 +8,7 @@ export type TranslationStrings = {
   messagePlaceholder: string;
   send: string;
   sendLoading: string;
+  welcomeMessage: string;
   startConversation: string;
   chatHistory: string;
   availableAi: string;
