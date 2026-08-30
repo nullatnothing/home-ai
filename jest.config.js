@@ -5,6 +5,7 @@ module.exports = {
   },
   testMatch: ['<rootDir>/**/__tests__/**/*.test.ts?(x)', '<rootDir>/**/__tests__/**/*.spec.ts?(x)'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^react-native$': '<rootDir>/test/mocks/react-native.js',
     '^@react-native-async-storage/async-storage$': '<rootDir>/test/mocks/async-storage.js',

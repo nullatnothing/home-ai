@@ -1,1 +1,9 @@
-import '@testing-library/jest-native/extend-expect';
+const originalDebug = console.debug;
+
+beforeEach(() => {
+  console.debug = jest.fn();
+});
+
+afterEach(() => {
+  console.debug = originalDebug;
+});
