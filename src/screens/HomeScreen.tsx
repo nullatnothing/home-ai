@@ -23,6 +23,7 @@ import {
 } from "../features/chat/chatStorage";
 import { styles } from "../theme/styles";
 import { ChatMessage, ChatThread, TranslationStrings } from "../types";
+import { renderMarkdownText } from "../utils/markdown";
 
 type Props = {
   appState: AppState;
@@ -606,8 +607,11 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
                       message.role === "user" && styles.userMessageText,
                     ]}
                   >
-                    {message.text}
+                    {message.role === "assistant"
+                      ? renderMarkdownText(message.text)
+                      : message.text}
                   </Text>
+
                   {copiedMessageId === message.id ? (
                     <Text style={styles.copiedHint}>{strings.copied}</Text>
                   ) : null}
