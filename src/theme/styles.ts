@@ -230,6 +230,21 @@ export const styles = StyleSheet.create({
     marginTop: 6,
     fontWeight: "600",
   },
+  messageActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  messageActionButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   inputComposer: {
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,

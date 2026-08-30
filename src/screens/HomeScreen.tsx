@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   Text,
   TextInput,
   View,
@@ -503,6 +504,24 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     }
   };
 
+  const shareMessage = async (text: string) => {
+    try {
+      await Share.share({
+        message: text,
+        title: "Share response",
+      });
+    } catch {
+      setAppState((current) => ({
+        ...current,
+        dialog: {
+          title: strings.copyFailedTitle,
+          message: strings.copyFailedMessage,
+          confirmText: strings.ok,
+        },
+      }));
+    }
+  };
+
   useEffect(() => {
     const keyboardListener = Keyboard.addListener("keyboardDidShow", () => {
       if (!activeThread || !scrollViewRef.current) return;
@@ -611,6 +630,25 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
                       ? renderMarkdownText(message.text)
                       : message.text}
                   </Text>
+
+                  {message.role === "assistant" ? (
+                    <View style={styles.messageActions}>
+                      <Pressable
+                        style={styles.messageActionButton}
+                        onPress={() => shareMessage(message.text)}
+                        accessibilityLabel="Share response"
+                      >
+                        <Ionicons name="share-outline" size={14} color="#0F172A" />
+                      </Pressable>
+                      <Pressable
+                        style={styles.messageActionButton}
+                        onPress={() => copyMessage(message.text, message.id)}
+                        accessibilityLabel="Copy message"
+                      >
+                        <Ionicons name="copy-outline" size={14} color="#0F172A" />
+                      </Pressable>
+                    </View>
+                  ) : null}
 
                   {copiedMessageId === message.id ? (
                     <Text style={styles.copiedHint}>{strings.copied}</Text>
