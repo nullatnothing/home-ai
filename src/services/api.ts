@@ -37,12 +37,50 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
     return {} as T;
   }
 
+  const contentType = response.headers?.get?.('content-type') ?? '';
+  if (/ndjson|x-ndjson|json-seq/i.test(contentType) || looksLikeNdjson(trimmed)) {
+    return parseNdjsonPayload(trimmed) as T;
+  }
+
   try {
     return JSON.parse(trimmed) as T;
   } catch {
     const snippet = trimmed.slice(0, 200);
     throw new Error(`Invalid JSON response from server: ${snippet}`);
   }
+}
+
+export function parseNdjsonPayload(raw: string): Record<string, unknown> | null {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const parsed: Record<string, unknown>[] = [];
+  for (const line of lines) {
+    try {
+      const value = JSON.parse(line) as Record<string, unknown>;
+      parsed.push(value);
+    } catch {
+      // Ignore partial or malformed NDJSON lines and keep the valid ones.
+    }
+  }
+
+  if (!parsed.length) {
+    throw new Error(`Invalid JSON response from server: ${raw.slice(0, 200)}`);
+  }
+
+  return parsed[parsed.length - 1] ?? null;
+}
+
+function looksLikeNdjson(raw: string): boolean {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) return false;
+  return lines.every((line) => line.startsWith('{') || line.startsWith('['));
 }
 
 function parseJsonPayload(raw: string): Record<string, unknown> | null {

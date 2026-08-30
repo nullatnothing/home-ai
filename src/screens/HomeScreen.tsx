@@ -29,6 +29,22 @@ export function resolveAssistantText(response: { message?: { content?: string };
   return fallback;
 }
 
+function parseOllamaStreamMessage(raw: string): { text: string; done: boolean } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { text: '', done: false };
+
+  try {
+    const parsed = JSON.parse(trimmed) as { message?: { content?: string }; content?: string; response?: string; done?: boolean; error?: string };
+    if (typeof parsed.error === 'string') {
+      throw new Error(parsed.error);
+    }
+    const text = resolveAssistantText(parsed, '');
+    return { text, done: Boolean(parsed.done) };
+  } catch {
+    return { text: '', done: false };
+  }
+}
+
 export function getConnectionStatus(appState: AppState, strings: TranslationStrings) {
   return appState.lastConnectionState === 'success'
     ? { label: strings.connectionSuccessful || strings.connectionOk, color: '#22C55E' }
@@ -171,21 +187,72 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
         lastUserMessage: text,
       });
 
-      const response = await fetchJson<{ message?: { content?: string }; content?: string; response?: string; error?: string }>(`${baseUrl}/api/chat`, {
+      const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
-        body: JSON.stringify(requestBody),
+        headers: { Accept: 'application/x-ndjson', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...requestBody, stream: true }),
       });
 
+      if (!response.ok) {
+        const rawError = await response.text();
+        let message = rawError || `Request failed with status ${response.status}`;
+        try {
+          const parsed = JSON.parse(rawError) as { error?: string; message?: string; detail?: string };
+          message = typeof parsed.error === 'string'
+            ? parsed.error
+            : typeof parsed.message === 'string'
+              ? parsed.message
+              : typeof parsed.detail === 'string'
+                ? parsed.detail
+                : message;
+        } catch {
+          // Ignore invalid fallback payloads and use the raw text instead.
+        }
+        throw new Error(message);
+      }
+
+      if (!response.body) {
+        throw new Error(strings.noResponseReceived);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let assistantText = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const chunks = buffer.split(/\r?\n/);
+        buffer = chunks.pop() ?? '';
+
+        for (const chunk of chunks) {
+          const parsed = parseOllamaStreamMessage(chunk);
+          if (parsed.text) {
+            assistantText += parsed.text;
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        const finalChunk = parseOllamaStreamMessage(buffer);
+        if (finalChunk.text) {
+          assistantText += finalChunk.text;
+        }
+      }
+
+      const finalAssistantText = assistantText || strings.noResponseReceived;
       console.debug('[HomeAI] Ollama response', {
         url: `${baseUrl}/api/chat`,
-        response,
-        assistantPreview: resolveAssistantText(response, '').slice(0, 500),
+        assistantPreview: finalAssistantText.slice(0, 500),
       });
 
-      const assistantText = resolveAssistantText(response, strings.noResponseReceived);
-      const assistantMessage: ChatMessage = { id: `${Date.now()}-assistant`, role: 'assistant', text: assistantText };
+      const assistantMessage: ChatMessage = { id: `${Date.now()}-assistant`, role: 'assistant', text: finalAssistantText };
       updateThread(threadId, (thread) => ({ ...thread, messages: [...thread.messages, assistantMessage], updatedAt: Date.now() }));
     } catch (error: any) {
+      console.error('[HomeAI] chat request failed', error);
       setAppState((current) => ({ ...current, dialog: { title: strings.chatFailed, message: error?.message ?? strings.unknownError, confirmText: strings.ok } }));
     } finally {
       setIsSending(false);

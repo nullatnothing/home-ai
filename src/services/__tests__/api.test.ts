@@ -1,4 +1,4 @@
-import { fetchJson, sanitizeUrl } from '../api';
+import { fetchJson, parseNdjsonPayload, sanitizeUrl } from '../api';
 
 describe('sanitizeUrl', () => {
   it('trims whitespace and strips trailing slashes', () => {
@@ -59,5 +59,20 @@ describe('fetchJson', () => {
     } as any);
 
     await expect(fetchJson('https://example.com')).rejects.toThrow('Request failed with status 404');
+  });
+
+  it('parses ndjson payloads from streaming responses', async () => {
+    const payload = '{"message":{"content":"Hel"}}\n{"message":{"content":"lo"}}\n';
+
+    expect(parseNdjsonPayload(payload)).toEqual({ message: { content: 'lo' } });
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: jest.fn().mockReturnValue('application/x-ndjson') },
+      text: jest.fn().mockResolvedValue(payload),
+    } as any);
+
+    await expect(fetchJson('https://example.com')).resolves.toEqual({ message: { content: 'lo' } });
   });
 });

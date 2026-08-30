@@ -10,4 +10,7 @@ module.exports = {
     '^@react-native-async-storage/async-storage$': '<rootDir>/test/mocks/async-storage.js',
     '^expo/config-plugins$': '<rootDir>/test/mocks/config-plugins.js',
   },
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/**/__tests__/**'],
+  collectCoverage: true,
+  coverageReporters: ['text', 'text-summary', 'lcov', 'html'],
 };
