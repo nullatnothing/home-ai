@@ -173,6 +173,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     loadChatThreads()
@@ -194,6 +195,8 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     () => threads.find((thread) => thread.id === activeThreadId) ?? null,
     [threads, activeThreadId],
   );
+  const messageCount = activeThread?.messages.length ?? 0;
+  const lastMessage = activeThread?.messages[messageCount - 1] ?? null;
   const connectionStatus = getConnectionStatus(appState, strings);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -207,6 +210,19 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     insets.bottom,
   );
   const lastModelRefreshKey = useRef("");
+
+  useEffect(() => {
+    if (!activeThread || !lastMessage || !scrollViewRef.current) return;
+
+    requestAnimationFrame(() => {
+      if (lastMessage.role === "user") {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+        return;
+      }
+
+      scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: true });
+    });
+  }, [activeThread, lastMessage, messageCount]);
 
   useEffect(() => {
     if (!appState.serverUrl) return;
@@ -545,6 +561,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
           contentContainerStyle={styles.chatScrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          ref={scrollViewRef}
         >
           {activeThread?.messages.length ? (
             activeThread.messages.map((message) => (
