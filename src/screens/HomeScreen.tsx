@@ -1,6 +1,10 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppState } from '../hooks/useAppBootstrap';
 import { fetchJson } from '../services/api';
 import { loadChatThreads, persistChatThreads } from '../features/chat/chatStorage';
@@ -9,8 +13,25 @@ import { ChatMessage, ChatThread, TranslationStrings } from '../types';
 
 type Props = { appState: AppState; setAppState: React.Dispatch<React.SetStateAction<AppState>>; strings: TranslationStrings };
 
-export const KEYBOARD_AVOIDING_BEHAVIOR = 'padding';
-export const KEYBOARD_VERTICAL_OFFSET = 88;
+export const KEYBOARD_LAYOUT = Object.freeze({
+  behavior: 'padding',
+  verticalOffset: 88,
+  bottomBuffer: 20,
+} as const);
+
+export const KEYBOARD_AVOIDING_BEHAVIOR = KEYBOARD_LAYOUT.behavior;
+export const KEYBOARD_VERTICAL_OFFSET = KEYBOARD_LAYOUT.verticalOffset;
+export const KEYBOARD_BOTTOM_BUFFER = KEYBOARD_LAYOUT.bottomBuffer;
+
+export function getKeyboardVerticalOffset(platform: string, tabBarHeight: number, bottomInset: number) {
+  if (platform !== 'ios') return 0;
+  return Math.max(KEYBOARD_LAYOUT.verticalOffset + KEYBOARD_LAYOUT.bottomBuffer, tabBarHeight + bottomInset + KEYBOARD_LAYOUT.bottomBuffer);
+}
+
+export function getComposerBottomPadding(platform: string, bottomInset: number) {
+  if (platform !== 'ios') return 0;
+  return bottomInset + KEYBOARD_LAYOUT.bottomBuffer;
+}
 
 export function buildChatRequest(selectedModel: string, previousMessages: ChatMessage[], nextUserText: string) {
   return {
@@ -97,6 +118,10 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
 
   const activeThread = useMemo(() => threads.find((thread) => thread.id === activeThreadId) ?? null, [threads, activeThreadId]);
   const connectionStatus = getConnectionStatus(appState, strings);
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const keyboardVerticalOffset = getKeyboardVerticalOffset(Platform.OS, tabBarHeight, insets.bottom);
+  const composerBottomPadding = getComposerBottomPadding(Platform.OS, insets.bottom);
   const lastModelRefreshKey = useRef('');
 
   useEffect(() => {
@@ -261,7 +286,11 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
 
   const copyMessage = async (text: string, id: string) => {
     try {
-      if (Platform.OS === 'web' && navigator.clipboard) await navigator.clipboard.writeText(text);
+      if (Platform.OS === 'web' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        await Clipboard.setStringAsync(text);
+      }
       setCopiedMessageId(id);
       setTimeout(() => setCopiedMessageId((current) => (current === id ? null : current)), 1200);
     } catch {
@@ -302,7 +331,8 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
       <KeyboardAvoidingView
         style={styles.chatContainer}
         behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        keyboardVerticalOffset={keyboardVerticalOffset}
+        automaticOffset
         enabled
       >
         <ScrollView
@@ -318,7 +348,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
             </Pressable>
           )) : <Text style={styles.emptyChatText}>{strings.startConversation}</Text>}
         </ScrollView>
-        <View style={styles.inputComposer}>
+        <View style={[styles.inputComposer, Platform.OS === 'ios' ? { paddingBottom: composerBottomPadding } : null]}>
           <View style={styles.inputRow}>
             <TextInput value={messageText} onChangeText={setMessageText} placeholder={strings.messagePlaceholder} style={styles.input} multiline />
             <Pressable onPress={sendMessage} style={[styles.sendButton, isSending && styles.sendButtonDisabled]} disabled={isSending}><Text style={styles.sendButtonText}>{isSending ? strings.sendLoading : strings.send}</Text></Pressable>

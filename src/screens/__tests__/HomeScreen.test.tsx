@@ -1,9 +1,25 @@
 import { translations } from '../../constants';
-import { buildChatRequest, getConnectionStatus, KEYBOARD_AVOIDING_BEHAVIOR, KEYBOARD_VERTICAL_OFFSET, resolveAssistantText } from '../HomeScreen';
+import { buildChatRequest, getComposerBottomPadding, getConnectionStatus, getKeyboardVerticalOffset, HomeScreen, KEYBOARD_AVOIDING_BEHAVIOR, KEYBOARD_VERTICAL_OFFSET, resolveAssistantText } from '../HomeScreen';
 import { styles } from '../../theme/styles';
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn(),
+}));
 
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
+}));
+
+jest.mock('@react-navigation/bottom-tabs', () => ({
+  useBottomTabBarHeight: jest.fn(() => 49),
+}));
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: jest.fn(() => ({ top: 0, right: 0, bottom: 20, left: 0 })),
+}));
+
+jest.mock('react-native-keyboard-controller', () => ({
+  KeyboardAvoidingView: 'KeyboardAvoidingView',
 }));
 
 describe('HomeScreen screen contracts', () => {
@@ -52,9 +68,14 @@ describe('HomeScreen screen contracts', () => {
     }, translations.fr)).toEqual({ label: 'Connexion échouée', color: '#EF4444' });
   });
 
-  it('keeps the keyboard and message layout contract stable', () => {
+  it('keeps the keyboard offset and composer inset above the keyboard and tab bar', () => {
     expect(KEYBOARD_AVOIDING_BEHAVIOR).toBe('padding');
     expect(KEYBOARD_VERTICAL_OFFSET).toBe(88);
+    expect(getKeyboardVerticalOffset('ios', 49, 20)).toBe(108);
+    expect(getKeyboardVerticalOffset('ios', 20, 34)).toBe(108);
+    expect(getKeyboardVerticalOffset('android', 49, 20)).toBe(0);
+    expect(getComposerBottomPadding('ios', 20)).toBe(40);
+    expect(getComposerBottomPadding('android', 20)).toBe(0);
     expect(styles.messageBubble).toMatchObject({
       marginHorizontal: 16,
       maxWidth: '82%',
