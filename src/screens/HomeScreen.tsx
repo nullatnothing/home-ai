@@ -3,6 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -174,6 +176,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
+  const lastBubbleTopRef = useRef(0);
 
   useEffect(() => {
     loadChatThreads()
@@ -220,7 +223,8 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
         return;
       }
 
-      scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: true });
+      const targetY = lastBubbleTopRef.current > 0 ? lastBubbleTopRef.current : 0;
+      scrollViewRef.current?.scrollTo({ x: 0, y: targetY, animated: true });
     });
   }, [activeThread, lastMessage, messageCount]);
 
@@ -498,6 +502,17 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     }
   };
 
+  useEffect(() => {
+    const keyboardListener = Keyboard.addListener("keyboardDidShow", () => {
+      if (!activeThread || !scrollViewRef.current) return;
+      requestAnimationFrame(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      });
+    });
+
+    return () => keyboardListener.remove();
+  }, [activeThread]);
+
   return (
     <View style={styles.chatScreen}>
       <View style={styles.topBar}>
@@ -564,35 +579,61 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
           ref={scrollViewRef}
         >
           {activeThread?.messages.length ? (
-            activeThread.messages.map((message) => (
-              <Pressable
-                key={message.id}
-                onLongPress={() => copyMessage(message.text, message.id)}
-                style={[
-                  styles.messageBubble,
-                  message.role === "user"
-                    ? styles.userBubble
-                    : styles.assistantBubble,
-                ]}
-              >
-                <Text
+            activeThread.messages.map((message, index) => {
+              const isLastMessage = index === activeThread.messages.length - 1;
+
+              return (
+                <Pressable
+                  key={message.id}
+                  onLongPress={() => copyMessage(message.text, message.id)}
+                  onLayout={
+                    isLastMessage && message.role === "assistant"
+                      ? (event) => {
+                          lastBubbleTopRef.current = event.nativeEvent.layout.y;
+                        }
+                      : undefined
+                  }
                   style={[
-                    styles.messageText,
-                    message.role === "user" && styles.userMessageText,
+                    styles.messageBubble,
+                    message.role === "user"
+                      ? styles.userBubble
+                      : styles.assistantBubble,
                   ]}
                 >
-                  {message.text}
-                </Text>
-                {copiedMessageId === message.id ? (
-                  <Text style={styles.copiedHint}>{strings.copied}</Text>
-                ) : null}
-              </Pressable>
-            ))
+                  <Text
+                    style={[
+                      styles.messageText,
+                      message.role === "user" && styles.userMessageText,
+                    ]}
+                  >
+                    {message.text}
+                  </Text>
+                  {copiedMessageId === message.id ? (
+                    <Text style={styles.copiedHint}>{strings.copied}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })
           ) : (
             <Text style={styles.emptyChatText}>
               {strings.startConversation}
             </Text>
           )}
+          {isSending ? (
+            <View
+              style={[styles.messageBubble, styles.assistantBubble, styles.typingBubble]}
+            >
+              <View style={styles.sendButtonContent}>
+                <AnimatedTypingDots compact />
+                <Text
+                  style={[styles.sendButtonText, styles.sendButtonTextDisabled]}
+                >
+                  {strings.send}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
         </ScrollView>
         <View
           style={[
@@ -627,9 +668,18 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
               ]}
               disabled={isSending}
             >
-              <Text style={styles.sendButtonText}>
-                {isSending ? strings.sendLoading : strings.send}
-              </Text>
+              {isSending ? (
+                <View style={styles.sendButtonContent}>
+                  <AnimatedTypingDots compact />
+                  <Text
+                    style={[styles.sendButtonText, styles.sendButtonTextDisabled]}
+                  >
+                    {strings.send}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.sendButtonText}>{strings.send}</Text>
+              )}
             </Pressable>
           </View>
         </View>
@@ -821,3 +871,52 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     </View>
   );
 }
+
+const AnimatedTypingDots = ({ compact = false }: { compact?: boolean }) => {
+  const dotAnimations = useRef(
+    [0, 1, 2].map(() => new Animated.Value(0)),
+  ).current;
+
+  useEffect(() => {
+    const animations = dotAnimations.map((dot, index) =>
+      Animated.sequence([
+        Animated.delay(index * 120),
+        Animated.timing(dot, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dot, {
+          toValue: 0.35,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dot, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    const animation = Animated.loop(Animated.parallel(animations));
+    animation.start();
+
+    return () => animation.stop();
+  }, [dotAnimations]);
+
+  return (
+    <View style={[styles.typingRow, compact && styles.typingRowCompact]}>
+      {dotAnimations.map((dot, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.typingDot,
+            compact && styles.typingDotCompact,
+            { transform: [{ scale: dot }] },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
