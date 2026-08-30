@@ -1,4 +1,4 @@
-export type Language = 'en' | 'de' | 'es' | 'it' | 'fr';
+export type Language = "en" | "de" | "es" | "it" | "fr";
 
 export type TranslationStrings = {
   loading: string;
@@ -63,7 +63,7 @@ export type TranslationStrings = {
 
 export type ChatMessage = {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   text: string;
 };
 

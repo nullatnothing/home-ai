@@ -1,1 +1,1 @@
-jest.mock('@react-native/jest-preset', () => ({}), { virtual: true });
+jest.mock("@react-native/jest-preset", () => ({}), { virtual: true });

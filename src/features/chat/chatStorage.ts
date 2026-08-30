@@ -1,8 +1,11 @@
-import { STORAGE_KEYS } from '../../constants';
-import { storage } from '../../services/storage';
-import { ChatThread } from '../../types';
+import { STORAGE_KEYS } from "../../constants";
+import { storage } from "../../services/storage";
+import { ChatThread } from "../../types";
 
-export async function loadChatThreads(): Promise<{ threads: ChatThread[]; activeThreadId: string | null }> {
+export async function loadChatThreads(): Promise<{
+  threads: ChatThread[];
+  activeThreadId: string | null;
+}> {
   const [threadsRaw, activeThreadId] = await Promise.all([
     storage.getItem(STORAGE_KEYS.threadHistory),
     storage.getItem(STORAGE_KEYS.activeThreadId),
@@ -21,9 +24,14 @@ export async function loadChatThreads(): Promise<{ threads: ChatThread[]; active
   return { threads, activeThreadId: activeThreadId ?? null };
 }
 
-export async function persistChatThreads(threads: ChatThread[], activeThreadId: string | null): Promise<void> {
+export async function persistChatThreads(
+  threads: ChatThread[],
+  activeThreadId: string | null,
+): Promise<void> {
   await Promise.all([
     storage.setItem(STORAGE_KEYS.threadHistory, JSON.stringify(threads)),
-    activeThreadId ? storage.setItem(STORAGE_KEYS.activeThreadId, activeThreadId) : Promise.resolve(),
+    activeThreadId
+      ? storage.setItem(STORAGE_KEYS.activeThreadId, activeThreadId)
+      : Promise.resolve(),
   ]);
 }

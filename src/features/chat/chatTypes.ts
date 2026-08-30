@@ -1,4 +1,4 @@
-import { ChatThread } from '../../types';
+import { ChatThread } from "../../types";
 
 export type ChatRuntimeState = {
   threads: ChatThread[];

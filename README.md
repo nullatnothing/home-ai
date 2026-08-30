@@ -5,6 +5,7 @@ Home AI is a lightweight Expo mobile app for chatting with a local Ollama server
 ## App description
 
 The app lets users:
+
 - connect to a local Ollama server
 - select an installed model
 - open chat threads with persisted history
@@ -14,6 +15,7 @@ The app lets users:
 - use the app in multiple languages through built-in internationalization
 
 The app currently supports the following languages:
+
 - English
 - German
 - Spanish
@@ -88,6 +90,7 @@ Then select the model `qwen2.5-coder:7b` in the model selector.
 ## What this AI can do
 
 The `qwen2.5-coder:7b` model is a coding-focused LLM and is useful for:
+
 - writing and explaining code
 - reviewing code for bugs and logic issues
 - generating small functions, scripts, and utilities

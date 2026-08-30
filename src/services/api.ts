@@ -1,31 +1,39 @@
-export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+export async function fetchJson<T>(
+  url: string,
+  init?: RequestInit,
+): Promise<T> {
   const response = await fetch(url, {
     ...init,
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
   });
 
-  const hasText = typeof response.text === 'function';
-  const hasJson = typeof response.json === 'function';
-  const text = hasText ? await response.text() : '';
+  const hasText = typeof response.text === "function";
+  const hasJson = typeof response.json === "function";
+  const text = hasText ? await response.text() : "";
   const trimmed = text.trim();
 
-  console.debug('[HomeAI] fetchJson response', {
+  console.debug("[HomeAI] fetchJson response", {
     url,
     ok: response.ok,
     status: response.status,
-    contentType: response.headers?.get?.('content-type') ?? 'unknown',
+    contentType: response.headers?.get?.("content-type") ?? "unknown",
     payloadPreview: trimmed.slice(0, 500),
   });
 
   if (!response.ok) {
     const parsedError = parseJsonPayload(trimmed);
-    const serverMessage = typeof parsedError?.error === 'string'
-      ? parsedError.error
-      : typeof parsedError?.message === 'string'
-        ? parsedError.message
-        : typeof parsedError?.detail === 'string'
-          ? parsedError.detail
-          : trimmed || `Request failed with status ${response.status}`;
+    const serverMessage =
+      typeof parsedError?.error === "string"
+        ? parsedError.error
+        : typeof parsedError?.message === "string"
+          ? parsedError.message
+          : typeof parsedError?.detail === "string"
+            ? parsedError.detail
+            : trimmed || `Request failed with status ${response.status}`;
     throw new Error(serverMessage);
   }
 
@@ -37,8 +45,11 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
     return {} as T;
   }
 
-  const contentType = response.headers?.get?.('content-type') ?? '';
-  if (/ndjson|x-ndjson|json-seq/i.test(contentType) || looksLikeNdjson(trimmed)) {
+  const contentType = response.headers?.get?.("content-type") ?? "";
+  if (
+    /ndjson|x-ndjson|json-seq/i.test(contentType) ||
+    looksLikeNdjson(trimmed)
+  ) {
     return parseNdjsonPayload(trimmed) as T;
   }
 
@@ -50,7 +61,9 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
   }
 }
 
-export function parseNdjsonPayload(raw: string): Record<string, unknown> | null {
+export function parseNdjsonPayload(
+  raw: string,
+): Record<string, unknown> | null {
   const lines = raw
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -80,7 +93,7 @@ function looksLikeNdjson(raw: string): boolean {
     .filter(Boolean);
 
   if (!lines.length) return false;
-  return lines.every((line) => line.startsWith('{') || line.startsWith('['));
+  return lines.every((line) => line.startsWith("{") || line.startsWith("["));
 }
 
 function parseJsonPayload(raw: string): Record<string, unknown> | null {
@@ -94,7 +107,7 @@ function parseJsonPayload(raw: string): Record<string, unknown> | null {
 
 export function sanitizeUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
-  if (!trimmed) return '';
-  if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/\/+$/, '');
-  return `http://${trimmed.replace(/\/+$/, '')}`;
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/\/+$/, "");
+  return `http://${trimmed.replace(/\/+$/, "")}`;
 }

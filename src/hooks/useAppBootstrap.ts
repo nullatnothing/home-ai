@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { DEFAULT_MODELS, DEFAULT_SERVER_URL, STORAGE_KEYS, translations } from '../constants';
-import { sanitizeUrl } from '../services/api';
-import { storage } from '../services/storage';
-import { AppDialogConfig, Language } from '../types';
+import { useEffect, useMemo, useState } from "react";
+import {
+  DEFAULT_MODELS,
+  DEFAULT_SERVER_URL,
+  STORAGE_KEYS,
+  translations,
+} from "../constants";
+import { sanitizeUrl } from "../services/api";
+import { storage } from "../services/storage";
+import { AppDialogConfig, Language } from "../types";
 
 export type AppState = {
   serverUrl: string;
   selectedModel: string;
   availableModels: string[];
   language: Language;
-  lastConnectionState: 'idle' | 'success' | 'error';
+  lastConnectionState: "idle" | "success" | "error";
   lastConnectionMessage: string;
   dialog: AppDialogConfig | null;
 };
@@ -17,11 +22,11 @@ export type AppState = {
 export function useAppBootstrap() {
   const [appState, setAppState] = useState<AppState>({
     serverUrl: DEFAULT_SERVER_URL,
-    selectedModel: DEFAULT_MODELS[0] ?? '',
+    selectedModel: DEFAULT_MODELS[0] ?? "",
     availableModels: DEFAULT_MODELS,
-    language: 'en',
-    lastConnectionState: 'idle',
-    lastConnectionMessage: '',
+    language: "en",
+    lastConnectionState: "idle",
+    lastConnectionMessage: "",
     dialog: null,
   });
   const [isHydrated, setIsHydrated] = useState(false);
@@ -40,7 +45,10 @@ export function useAppBootstrap() {
         ...current,
         serverUrl: sanitizeUrl(storedUrl ?? DEFAULT_SERVER_URL),
         selectedModel: storedModel ?? current.selectedModel,
-        language: storedLanguage && storedLanguage in translations ? (storedLanguage as Language) : current.language,
+        language:
+          storedLanguage && storedLanguage in translations
+            ? (storedLanguage as Language)
+            : current.language,
       }));
       setIsHydrated(true);
     };
@@ -50,17 +58,23 @@ export function useAppBootstrap() {
 
   useEffect(() => {
     if (!isHydrated) return;
-    storage.setItem(STORAGE_KEYS.serverUrl, appState.serverUrl).catch(() => undefined);
+    storage
+      .setItem(STORAGE_KEYS.serverUrl, appState.serverUrl)
+      .catch(() => undefined);
   }, [appState.serverUrl, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
-    storage.setItem(STORAGE_KEYS.selectedModel, appState.selectedModel).catch(() => undefined);
+    storage
+      .setItem(STORAGE_KEYS.selectedModel, appState.selectedModel)
+      .catch(() => undefined);
   }, [appState.selectedModel, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
-    storage.setItem(STORAGE_KEYS.language, appState.language).catch(() => undefined);
+    storage
+      .setItem(STORAGE_KEYS.language, appState.language)
+      .catch(() => undefined);
   }, [appState.language, isHydrated]);
 
   return useMemo(
@@ -70,7 +84,8 @@ export function useAppBootstrap() {
       strings,
       appState,
       setAppState,
-      dismissDialog: () => setAppState((current) => ({ ...current, dialog: null })),
+      dismissDialog: () =>
+        setAppState((current) => ({ ...current, dialog: null })),
     }),
     [appState, isHydrated, strings],
   );

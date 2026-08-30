@@ -29,14 +29,11 @@
     "plugins": [
       "expo-font",
       [
-      "./mods/withUsesCleartextTraffic",
-      {
-        "ips": [
-          "192.168.88.12",
-          "192.168.88.13"
-        ]
-      }
-    ]
+        "./mods/withUsesCleartextTraffic",
+        {
+          "ips": ["192.168.88.12", "192.168.88.13"]
+        }
+      ]
     ],
     "extra": {
       "eas": {
