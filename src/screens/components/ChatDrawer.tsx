@@ -67,7 +67,7 @@ export function ChatDrawer({
                     }}
                     style={styles.historyActionButton}
                   >
-                    <Ionicons name="pencil" size={14} color={isActive ? "#FFF" : "#0F172A"} />
+                    <Ionicons name="pencil" size={14} color="#0F172A" />
                   </Pressable>
                   <Pressable
                     onPress={(event) => {
@@ -76,7 +76,7 @@ export function ChatDrawer({
                     }}
                     style={styles.historyActionButton}
                   >
-                    <Ionicons name="trash" size={14} color={isActive ? "#FFF" : "#0F172A"} />
+                    <Ionicons name="trash" size={14} color="#0F172A" />
                   </Pressable>
                 </View>
               </View>
@@ -87,4 +87,3 @@ export function ChatDrawer({
     </Pressable>
   );
 }
-
