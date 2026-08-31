@@ -319,8 +319,8 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.5)",
     justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
+    alignItems: "stretch",
+    padding: 0,
   },
   modalCard: {
     width: "100%",
