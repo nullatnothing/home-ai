@@ -1,19 +1,18 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Animated,
   Keyboard,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   Share,
-  Text,
-  TextInput,
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { ChatDrawer } from "./components/ChatDrawer";
+import { ChatHeader } from "./components/ChatHeader";
+import { ChatMessageList } from "./components/ChatMessageList";
+import { ModelPickerModal, RenameChatModal } from "./components/ChatModals";
+import { MessageComposer } from "./components/MessageComposer";
 import { AppState } from "../hooks/useAppBootstrap";
 import { fetchJson } from "../services/api";
 import {
@@ -22,7 +21,6 @@ import {
 } from "../features/chat/chatStorage";
 import { styles } from "../theme/styles";
 import { ChatMessage, ChatThread, TranslationStrings } from "../types";
-import { renderMarkdownText } from "../utils/markdown";
 
 type Props = {
   appState: AppState;
@@ -541,54 +539,15 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
 
   return (
     <View style={styles.chatScreen}>
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <Pressable
-            style={styles.iconButton}
-            onPress={() => setDrawerOpen(true)}
-          >
-            <Ionicons name="menu" size={18} color="#FFF" />
-          </Pressable>
-          <View style={styles.headerMeta}>
-            <Text style={[styles.heading, styles.topBarHeading]}>
-              {strings.home}
-            </Text>
-            <Text style={styles.serverText}>
-              {appState.serverUrl || strings.noServerUrlConfigured}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.topBarActions}>
-          <Pressable style={styles.iconButton} onPress={startNewChat}>
-            <Ionicons name="add" size={18} color="#FFF" />
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.connectionRow}>
-        <View
-          style={[
-            styles.statusDot,
-            { backgroundColor: connectionStatus.color },
-          ]}
-        />
-        <Text style={styles.connectionLabel}>{connectionStatus.label}</Text>
-      </View>
-
-      <View style={styles.modelSection}>
-        <View style={styles.modelRow}>
-          <Text style={styles.label}>{strings.currentModel}</Text>
-          <Pressable
-            style={styles.dropdown}
-            onPress={() => setIsModelPickerOpen(true)}
-          >
-            <Text style={styles.dropdownText}>
-              {appState.selectedModel || strings.noModelsAvailable}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color="#FFF" />
-          </Pressable>
-        </View>
-      </View>
+      <ChatHeader
+        connectionStatus={connectionStatus}
+        selectedModel={appState.selectedModel}
+        serverUrl={appState.serverUrl}
+        strings={strings}
+        onMenuPress={() => setDrawerOpen(true)}
+        onModelPress={() => setIsModelPickerOpen(true)}
+        onNewChatPress={startNewChat}
+      />
 
       <KeyboardAvoidingView
         style={styles.chatContainer}
@@ -606,362 +565,67 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
           showsVerticalScrollIndicator={false}
           ref={scrollViewRef}
         >
-          {activeThread?.messages.length ? (
-            activeThread.messages.map((message, index) => {
-              const isLastMessage = index === activeThread.messages.length - 1;
-
-              return (
-                <Pressable
-                  key={message.id}
-                  onLongPress={() => copyMessage(message.text, message.id)}
-                  onLayout={
-                    isLastMessage && message.role === "assistant"
-                      ? (event) => {
-                          lastBubbleTopRef.current = event.nativeEvent.layout.y;
-                        }
-                      : undefined
-                  }
-                  style={[
-                    styles.messageBubble,
-                    message.role === "user"
-                      ? styles.userBubble
-                      : styles.assistantBubble,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.messageText,
-                      message.role === "user" && styles.userMessageText,
-                    ]}
-                  >
-                    {message.role === "assistant"
-                      ? renderMarkdownText(message.text)
-                      : message.text}
-                  </Text>
-
-                  {message.role === "assistant" ? (
-                    <View style={styles.messageActions}>
-                      <Pressable
-                        style={styles.messageActionButton}
-                        onPress={() => shareMessage(message.text)}
-                        accessibilityLabel="Share response"
-                      >
-                        <Ionicons name="share-outline" size={14} color="#0F172A" />
-                      </Pressable>
-                      <Pressable
-                        style={styles.messageActionButton}
-                        onPress={() => copyMessage(message.text, message.id)}
-                        accessibilityLabel="Copy message"
-                      >
-                        <Ionicons name="copy-outline" size={14} color="#0F172A" />
-                      </Pressable>
-                    </View>
-                  ) : null}
-
-                  {copiedMessageId === message.id ? (
-                    <Text style={styles.copiedHint}>{strings.copied}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })
-          ) : (
-            <Text style={styles.emptyChatText}>
-              {strings.startConversation}
-            </Text>
-          )}
-          {isSending ? (
-            <View
-              style={[styles.messageBubble, styles.assistantBubble, styles.typingBubble]}
-            >
-              <View style={styles.sendButtonContent}>
-                <AnimatedTypingDots compact />
-                <Text
-                  style={[styles.sendButtonText, styles.sendButtonTextDisabled]}
-                >
-                  {strings.send}
-                </Text>
-              </View>
-            </View>
-          ) : null}
-
+          <ChatMessageList
+            copiedMessageId={copiedMessageId}
+            isSending={isSending}
+            messages={activeThread?.messages ?? []}
+            strings={strings}
+            onCopy={copyMessage}
+            onLastAssistantLayout={(event) => {
+              lastBubbleTopRef.current = event.nativeEvent.layout.y;
+            }}
+            onShare={shareMessage}
+          />
         </ScrollView>
-        <View style={styles.inputComposer}>
-          <View style={styles.inputRow}>
-            <TextInput
-              value={messageText}
-              onChangeText={setMessageText}
-              placeholder={strings.messagePlaceholder}
-              style={styles.input}
-              multiline
-            />
-            {messageText.trim().length > 0 ? (
-              <Pressable
-                style={styles.composerIconButton}
-                onPress={() => setMessageText("")}
-                accessibilityLabel="Clear message"
-              >
-                <Ionicons name="close-circle" size={22} color="#94A3B8" />
-              </Pressable>
-            ) : (
-              <Pressable
-                style={styles.composerIconButton}
-                onPress={Keyboard.dismiss}
-                accessibilityLabel="Dismiss keyboard"
-              >
-                <Ionicons name="chevron-down" size={22} color="#64748B" />
-              </Pressable>
-            )}
-            <Pressable
-              onPress={sendMessage}
-              style={[
-                styles.sendButton,
-                (isSending || !messageText.trim()) && styles.sendButtonDisabled,
-              ]}
-              disabled={isSending || !messageText.trim()}
-              accessibilityLabel={strings.send}
-            >
-              {isSending ? (
-                <AnimatedTypingDots compact />
-              ) : (
-                <Ionicons name="send" size={18} color="#FFF" />
-              )}
-            </Pressable>
-          </View>
-        </View>
+        <MessageComposer
+          isSending={isSending}
+          messageText={messageText}
+          strings={strings}
+          onChangeText={setMessageText}
+          onClear={() => setMessageText("")}
+          onSend={sendMessage}
+        />
       </KeyboardAvoidingView>
 
       {drawerOpen ? (
-        <Pressable
-          style={styles.drawerOverlay}
-          onPress={() => setDrawerOpen(false)}
-        >
-          <View style={styles.drawerScrim} />
-          <View style={styles.drawerPanel}>
-            <View style={styles.drawerHeader}>
-              <Text style={styles.drawerTitle}>{strings.chatHistory}</Text>
-              <Pressable
-                style={styles.drawerCloseButton}
-                onPress={() => setDrawerOpen(false)}
-              >
-                <Ionicons name="close" size={16} color="#FFF" />
-              </Pressable>
-            </View>
-            <Pressable
-              style={styles.drawerNewChatButton}
-              onPress={startNewChat}
-            >
-              <View style={styles.drawerNewChatContent}>
-                <Ionicons name="add-circle-outline" size={16} color="#FFF" />
-                <Text style={styles.drawerNewChatText}>{strings.newChat}</Text>
-              </View>
-            </Pressable>
-            <ScrollView contentContainerStyle={styles.historyList}>
-              {threads.map((thread) => (
-                <View
-                  key={thread.id}
-                  style={[
-                    styles.historyItem,
-                    thread.id === activeThreadId && styles.historyItemActive,
-                  ]}
-                >
-                  <Pressable
-                    onPress={() => {
-                      setActiveThreadId(thread.id);
-                      setDrawerOpen(false);
-                    }}
-                    style={{ flex: 1 }}
-                  >
-                    <Text
-                      style={[
-                        styles.historyItemText,
-                        thread.id === activeThreadId &&
-                          styles.historyItemTextActive,
-                      ]}
-                    >
-                      {thread.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.historyTimestamp,
-                        thread.id === activeThreadId &&
-                          styles.historyTimestampActive,
-                      ]}
-                    >
-                      {formatTimestamp(thread.updatedAt)}
-                    </Text>
-                  </Pressable>
-                  <View style={styles.historyActions}>
-                    <Pressable
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        setRenameTargetId(thread.id);
-                        setRenameValue(thread.title);
-                      }}
-                      style={styles.historyActionButton}
-                    >
-                      <Ionicons
-                        name="pencil"
-                        size={14}
-                        color={
-                          thread.id === activeThreadId ? "#FFF" : "#0F172A"
-                        }
-                      />
-                    </Pressable>
-                    <Pressable
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        deleteThread(thread.id);
-                      }}
-                      style={styles.historyActionButton}
-                    >
-                      <Ionicons
-                        name="trash"
-                        size={14}
-                        color={
-                          thread.id === activeThreadId ? "#FFF" : "#0F172A"
-                        }
-                      />
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </Pressable>
+        <ChatDrawer
+          activeThreadId={activeThreadId}
+          formatTimestamp={formatTimestamp}
+          strings={strings}
+          threads={threads}
+          onClose={() => setDrawerOpen(false)}
+          onDelete={deleteThread}
+          onNewChat={startNewChat}
+          onRename={(id, title) => {
+            setRenameTargetId(id);
+            setRenameValue(title);
+          }}
+          onSelect={(id) => {
+            setActiveThreadId(id);
+            setDrawerOpen(false);
+          }}
+        />
       ) : null}
 
-      <Modal
-        visible={isModelPickerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsModelPickerOpen(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setIsModelPickerOpen(false)}
-        >
-          <Pressable style={styles.dialogCard} onPress={() => undefined}>
-            <Text style={styles.modalTitle}>{strings.chooseModel}</Text>
-            {appState.availableModels.length ? (
-              appState.availableModels.map((model) => (
-                <Pressable
-                  key={model}
-                  style={[
-                    styles.modelOption,
-                    appState.selectedModel === model &&
-                      styles.modelOptionSelected,
-                  ]}
-                  onPress={() => {
-                    setAppState((current) => ({
-                      ...current,
-                      selectedModel: model,
-                    }));
-                    setIsModelPickerOpen(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.modelOptionText,
-                      appState.selectedModel === model &&
-                        styles.modelOptionTextSelected,
-                    ]}
-                  >
-                    {model}
-                  </Text>
-                </Pressable>
-              ))
-            ) : (
-              <Text style={styles.emptyText}>{strings.noModelsFoundYet}</Text>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <Modal
-        visible={!!renameTargetId}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRenameTargetId(null)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setRenameTargetId(null)}
-        >
-          <Pressable style={styles.dialogCard} onPress={() => undefined}>
-            <Text style={styles.modalTitle}>{strings.renameChat}</Text>
-            <TextInput
-              value={renameValue}
-              onChangeText={setRenameValue}
-              style={styles.renameInput}
-              placeholder={strings.enterChatTitle}
-              autoFocus
-            />
-            <View style={styles.renameActions}>
-              <Pressable
-                onPress={() => setRenameTargetId(null)}
-                style={[styles.secondaryButton, styles.renameActionButton]}
-              >
-                <Text style={styles.secondaryButtonText}>{strings.cancel}</Text>
-              </Pressable>
-              <Pressable
-                onPress={renameThread}
-                style={[styles.primaryButton, styles.renameActionButton]}
-              >
-                <Text style={styles.primaryButtonText}>{strings.save}</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ModelPickerModal
+        availableModels={appState.availableModels}
+        isOpen={isModelPickerOpen}
+        selectedModel={appState.selectedModel}
+        strings={strings}
+        onClose={() => setIsModelPickerOpen(false)}
+        onSelect={(model) => {
+          setAppState((current) => ({ ...current, selectedModel: model }));
+          setIsModelPickerOpen(false);
+        }}
+      />
+      <RenameChatModal
+        isOpen={!!renameTargetId}
+        strings={strings}
+        value={renameValue}
+        onCancel={() => setRenameTargetId(null)}
+        onChangeText={setRenameValue}
+        onSave={renameThread}
+      />
     </View>
   );
 }
-
-const AnimatedTypingDots = ({ compact = false }: { compact?: boolean }) => {
-  const [dotAnimations] = useState(() =>
-    [0, 1, 2].map(() => new Animated.Value(0)),
-  );
-
-  useEffect(() => {
-    const animations = dotAnimations.map((dot, index) =>
-      Animated.sequence([
-        Animated.delay(index * 120),
-        Animated.timing(dot, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot, {
-          toValue: 0.35,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    const animation = Animated.loop(Animated.parallel(animations));
-    animation.start();
-
-    return () => animation.stop();
-  }, [dotAnimations]);
-
-  return (
-    <View style={[styles.typingRow, compact && styles.typingRowCompact]}>
-      {dotAnimations.map((dot, index) => (
-        <Animated.View
-          key={index}
-          style={[
-            styles.typingDot,
-            compact && styles.typingDotCompact,
-            { transform: [{ scale: dot }] },
-          ]}
-        />
-      ))}
-    </View>
-  );
-};
