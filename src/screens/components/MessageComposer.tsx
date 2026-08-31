@@ -69,7 +69,10 @@ export function MessageComposer({
           </Pressable>
         ) : null}
         <Pressable
-          onPress={onSend}
+          onPress={() => {
+            Keyboard.dismiss();
+            onSend();
+          }}
           style={[
             styles.sendButton,
             (isSending || !hasMessage) && styles.sendButtonDisabled,
