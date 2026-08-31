@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Keyboard, Pressable, TextInput, View } from "react-native";
 import { styles } from "../../theme/styles";
 import { TranslationStrings } from "../../types";
@@ -23,6 +23,23 @@ export function MessageComposer({
   onSend,
 }: MessageComposerProps) {
   const hasMessage = messageText.trim().length > 0;
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShow = Keyboard.addListener("keyboardDidShow", () => {
+      setIsKeyboardVisible(true);
+    });
+    const keyboardDidHide = Keyboard.addListener("keyboardDidHide", () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShow.remove();
+      keyboardDidHide.remove();
+    };
+  }, []);
+
+  const showKeyboardDismissButton = !hasMessage && isKeyboardVisible;
 
   return (
     <View style={styles.inputComposer}>
@@ -42,7 +59,7 @@ export function MessageComposer({
           >
             <Ionicons name="close-circle" size={22} color="#94A3B8" />
           </Pressable>
-        ) : (
+        ) : showKeyboardDismissButton ? (
           <Pressable
             style={styles.composerIconButton}
             onPress={Keyboard.dismiss}
@@ -50,7 +67,7 @@ export function MessageComposer({
           >
             <Ionicons name="chevron-down" size={22} color="#64748B" />
           </Pressable>
-        )}
+        ) : null}
         <Pressable
           onPress={onSend}
           style={[
@@ -70,4 +87,3 @@ export function MessageComposer({
     </View>
   );
 }
-
