@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import {
   Alert,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { AppState } from "../hooks/useAppBootstrap";
 import { fetchJson, sanitizeUrl } from "../services/api";
 import { LANGUAGE_OPTIONS } from "../constants";
@@ -91,9 +94,10 @@ export function SettingsScreen({ appState, setAppState, strings }: Props) {
   };
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={styles.safeArea}
-      contentContainerStyle={styles.settingsScrollContent}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      enabled
     >
       <View style={[styles.topBar, styles.settingsTopBar]}>
         <View style={styles.topBarLeft}>
@@ -104,91 +108,99 @@ export function SettingsScreen({ appState, setAppState, strings }: Props) {
           </View>
         </View>
       </View>
-
-      <View style={styles.settingsCard}>
-        <Text style={styles.settingsSectionTitle}>
-          {strings.ollamaServerUrl}
-        </Text>
-        <TextInput
-          value={serverUrl}
-          onChangeText={setServerUrl}
-          style={styles.renameInput}
-          placeholder={strings.ollamaServerUrl}
-        />
-        <View style={styles.buttonRow}>
-          <Pressable
-            disabled={!canSave}
-            style={[
-              styles.primaryButton,
-              styles.fullWidth,
-              !canSave && styles.primaryButtonDisabled,
-            ]}
-            onPress={saveServerUrl}
-          >
-            <Text
-              style={[
-                styles.primaryButtonText,
-                !canSave && styles.primaryButtonTextDisabled,
-              ]}
-            >
-              {strings.saveServerUrl}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.secondaryButton,
-              styles.fullWidth,
-              testing && styles.buttonDisabled,
-            ]}
-            onPress={testConnection}
-            disabled={testing}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {testing ? strings.testing : strings.testConnection}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.settingsCard}>
-        <Text style={styles.heading}>{strings.language}</Text>
-        <View style={styles.languageSelector}>
-          {LANGUAGE_OPTIONS.map((code) => (
+      <ScrollView
+        style={styles.safeArea}
+        contentContainerStyle={styles.settingsScrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        onScrollBeginDrag={Keyboard.dismiss}
+      >
+        <View style={styles.settingsCard}>
+          <Text style={styles.settingsSectionTitle}>
+            {strings.ollamaServerUrl}
+          </Text>
+          <TextInput
+            value={serverUrl}
+            onChangeText={setServerUrl}
+            style={styles.renameInput}
+            placeholder={strings.ollamaServerUrl}
+          />
+          <View style={styles.buttonRow}>
             <Pressable
-              key={code}
-              onPress={() =>
-                setAppState((current) => ({ ...current, language: code }))
-              }
+              disabled={!canSave}
               style={[
-                styles.languageChip,
-                appState.language === code && styles.languageChipSelected,
+                styles.primaryButton,
+                styles.fullWidth,
+                !canSave && styles.primaryButtonDisabled,
               ]}
+              onPress={saveServerUrl}
             >
               <Text
                 style={[
-                  styles.languageChipText,
-                  appState.language === code && styles.languageChipTextSelected,
+                  styles.primaryButtonText,
+                  !canSave && styles.primaryButtonTextDisabled,
                 ]}
               >
-                {code.toUpperCase()}
+                {strings.saveServerUrl}
               </Text>
             </Pressable>
-          ))}
+            <Pressable
+              style={[
+                styles.secondaryButton,
+                styles.fullWidth,
+                testing && styles.buttonDisabled,
+              ]}
+              onPress={testConnection}
+              disabled={testing}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {testing ? strings.testing : strings.testConnection}
+              </Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.settingsCard}>
-        <Text style={styles.heading}>{strings.modelsTitle}</Text>
-        {appState.availableModels.length ? (
-          appState.availableModels.map((model) => (
-            <Text key={model} style={styles.modelListItem}>
-              {model}
-            </Text>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>{strings.noModelsFoundYet}</Text>
-        )}
-      </View>
-    </ScrollView>
+        <View style={styles.settingsCard}>
+          <Text style={styles.heading}>{strings.language}</Text>
+          <View style={styles.languageSelector}>
+            {LANGUAGE_OPTIONS.map((code) => (
+              <Pressable
+                key={code}
+                onPress={() =>
+                  setAppState((current) => ({ ...current, language: code }))
+                }
+                style={[
+                  styles.languageChip,
+                  appState.language === code && styles.languageChipSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languageChipText,
+                    appState.language === code &&
+                      styles.languageChipTextSelected,
+                  ]}
+                >
+                  {code.toUpperCase()}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.settingsCard}>
+          <Text style={styles.heading}>{strings.modelsTitle}</Text>
+          {appState.availableModels.length ? (
+            appState.availableModels.map((model) => (
+              <Text key={model} style={styles.modelListItem}>
+                {model}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>{strings.noModelsFoundYet}</Text>
+          )}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

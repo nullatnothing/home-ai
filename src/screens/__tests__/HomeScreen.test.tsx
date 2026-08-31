@@ -1,13 +1,9 @@
 import { translations } from "../../constants";
 import {
   buildChatRequest,
-  getComposerBottomPadding,
   getConnectionStatus,
-  getKeyboardVerticalOffset,
   getThreadTitle,
   normalizeThreadTitle,
-  KEYBOARD_AVOIDING_BEHAVIOR,
-  KEYBOARD_VERTICAL_OFFSET,
   resolveAssistantText,
 } from "../HomeScreen";
 import { styles } from "../../theme/styles";
@@ -132,14 +128,7 @@ describe("HomeScreen screen contracts", () => {
     expect(normalizeThreadTitle(renamedThread, "New chat")).toBe(renamedThread);
   });
 
-  it("does not double-count the keyboard, tab bar, or safe area on iOS", () => {
-    expect(KEYBOARD_AVOIDING_BEHAVIOR).toBe("padding");
-    expect(KEYBOARD_VERTICAL_OFFSET).toBe(0);
-    expect(getKeyboardVerticalOffset("ios", 49, 20)).toBe(0);
-    expect(getKeyboardVerticalOffset("ios", 20, 34)).toBe(0);
-    expect(getKeyboardVerticalOffset("android", 49, 20)).toBe(0);
-    expect(getComposerBottomPadding("ios", 20)).toBe(0);
-    expect(getComposerBottomPadding("android", 20)).toBe(0);
+  it("keeps the message layout and composer controls compact", () => {
     expect(styles.messageBubble).toMatchObject({
       marginHorizontal: 16,
       maxWidth: "82%",

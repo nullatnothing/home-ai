@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatDrawer } from "./components/ChatDrawer";
 import { ChatHeader } from "./components/ChatHeader";
 import { ChatMessageList } from "./components/ChatMessageList";
@@ -29,30 +30,10 @@ type Props = {
 };
 
 export const KEYBOARD_LAYOUT = Object.freeze({
-  behavior: "padding",
-  verticalOffset: 0,
-  bottomBuffer: 0,
-  automaticOffset: true,
+  closedOffset: 0,
+  openedOffset: 0,
 } as const);
 
-export const KEYBOARD_AVOIDING_BEHAVIOR = KEYBOARD_LAYOUT.behavior;
-export const KEYBOARD_VERTICAL_OFFSET = KEYBOARD_LAYOUT.verticalOffset;
-export const KEYBOARD_BOTTOM_BUFFER = KEYBOARD_LAYOUT.bottomBuffer;
-
-export function getKeyboardVerticalOffset(
-  platform: string,
-  _tabBarHeight: number,
-  _bottomInset: number,
-) {
-  return platform === "ios" ? KEYBOARD_LAYOUT.verticalOffset : 0;
-}
-
-export function getComposerBottomPadding(
-  _platform: string,
-  _bottomInset: number,
-) {
-  return KEYBOARD_LAYOUT.bottomBuffer;
-}
 
 export function getThreadTitle(question: string, fallback: string) {
   const singleLineQuestion = question.replace(/\s+/g, " ").trim();
@@ -187,6 +168,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   const [renameValue, setRenameValue] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
   const lastBubbleTopRef = useRef(0);
+  const lastModelRefreshKey = useRef("");
 
   useEffect(() => {
     loadChatThreads()
@@ -214,8 +196,9 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   const messageCount = activeThread?.messages.length ?? 0;
   const lastMessage = activeThread?.messages[messageCount - 1] ?? null;
   const connectionStatus = getConnectionStatus(appState, strings);
-  const keyboardVerticalOffset = getKeyboardVerticalOffset(Platform.OS, 0, 0);
-  const lastModelRefreshKey = useRef("");
+  const insets = useSafeAreaInsets();
+  const keyboardInset = Math.max(insets.bottom, 0);
+  const keyboardBottomOffset = Platform.OS === "ios" ? keyboardInset + 5 : 0;
 
   useEffect(() => {
     if (!activeThread || !lastMessage || !scrollViewRef.current) return;
@@ -551,9 +534,8 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
 
       <KeyboardAvoidingView
         style={styles.chatContainer}
-        behavior={Platform.OS === "ios" ? KEYBOARD_AVOIDING_BEHAVIOR : undefined}
-        keyboardVerticalOffset={keyboardVerticalOffset}
-        automaticOffset={KEYBOARD_LAYOUT.automaticOffset}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? keyboardBottomOffset : 0}
         enabled
       >
         <ScrollView

@@ -195,7 +195,18 @@ export const styles = StyleSheet.create({
     maxWidth: "80%",
     overflow: "hidden",
   },
-  chatContainer: { flex: 1, backgroundColor: "#F8FAFC" },
+  chatContainer: {
+    position: "relative",
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  keyboardStickyComposer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#FFF",
+  },
   chatScreen: { flex: 1, backgroundColor: "#F8FAFC" },
   chatScrollContainer: { flex: 1, backgroundColor: "#F8FAFC" },
   chatScrollContent: {
@@ -313,14 +324,15 @@ export const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    maxWidth: 420,
+    maxWidth: "100%",
     backgroundColor: "#FFF",
     borderRadius: 16,
     padding: 16,
   },
   dialogCard: {
     width: "100%",
-    maxWidth: 420,
+    maxWidth: "100%",
+    alignSelf: "stretch",
     backgroundColor: "#FFF",
     borderRadius: 16,
     padding: 20,
