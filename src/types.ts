@@ -36,6 +36,9 @@ export type TranslationStrings = {
   noConnectionTestYet: string;
   copyTextTitle: string;
   copyTextMessage: string;
+  deleteChatTitle: string;
+  deleteChatMessage: string;
+  delete: string;
   copyAction: string;
   copyFailedTitle: string;
   copyFailedMessage: string;

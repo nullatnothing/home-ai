@@ -189,6 +189,19 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     persistChatThreads(threads, activeThreadId).catch(() => undefined);
   }, [threads, activeThreadId]);
 
+  useEffect(() => {
+    if (threads.length === 0) {
+      const thread = makeThread(strings.newChat, strings.welcomeMessage);
+      setThreads([thread]);
+      setActiveThreadId(thread.id);
+      return;
+    }
+
+    if (!activeThreadId || !threads.some((thread) => thread.id === activeThreadId)) {
+      setActiveThreadId(threads[0].id);
+    }
+  }, [activeThreadId, strings.newChat, strings.welcomeMessage, threads]);
+
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId) ?? null,
     [threads, activeThreadId],
@@ -285,6 +298,19 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
       const next = threads.find((thread) => thread.id !== id);
       setActiveThreadId(next?.id ?? "");
     }
+  };
+
+  const requestDeleteThread = (id: string) => {
+    setAppState((current) => ({
+      ...current,
+      dialog: {
+        title: strings.deleteChatTitle,
+        message: strings.deleteChatMessage,
+        confirmText: strings.delete,
+        cancelText: strings.cancel,
+        onConfirm: () => deleteThread(id),
+      },
+    }));
   };
 
   const renameThread = () => {
@@ -576,7 +602,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
           strings={strings}
           threads={threads}
           onClose={() => setDrawerOpen(false)}
-          onDelete={deleteThread}
+          onDelete={requestDeleteThread}
           onNewChat={startNewChat}
           onRename={(id, title) => {
             setRenameTargetId(id);
