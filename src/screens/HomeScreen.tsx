@@ -1,4 +1,3 @@
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -15,7 +14,6 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppState } from "../hooks/useAppBootstrap";
 import { fetchJson } from "../services/api";
 import {
@@ -34,8 +32,9 @@ type Props = {
 
 export const KEYBOARD_LAYOUT = Object.freeze({
   behavior: "padding",
-  verticalOffset: 88,
-  bottomBuffer: 20,
+  verticalOffset: 0,
+  bottomBuffer: 0,
+  automaticOffset: true,
 } as const);
 
 export const KEYBOARD_AVOIDING_BEHAVIOR = KEYBOARD_LAYOUT.behavior;
@@ -44,22 +43,22 @@ export const KEYBOARD_BOTTOM_BUFFER = KEYBOARD_LAYOUT.bottomBuffer;
 
 export function getKeyboardVerticalOffset(
   platform: string,
-  tabBarHeight: number,
-  bottomInset: number,
+  _tabBarHeight: number,
+  _bottomInset: number,
 ) {
-  if (platform !== "ios") return 0;
-  return Math.max(
-    KEYBOARD_LAYOUT.verticalOffset + KEYBOARD_LAYOUT.bottomBuffer,
-    tabBarHeight + bottomInset + KEYBOARD_LAYOUT.bottomBuffer,
-  );
+  return platform === "ios" ? KEYBOARD_LAYOUT.verticalOffset : 0;
 }
 
 export function getComposerBottomPadding(
-  platform: string,
-  bottomInset: number,
+  _platform: string,
+  _bottomInset: number,
 ) {
-  if (platform !== "ios") return 0;
-  return bottomInset + KEYBOARD_LAYOUT.bottomBuffer;
+  return KEYBOARD_LAYOUT.bottomBuffer;
+}
+
+export function getThreadTitle(question: string, fallback: string) {
+  const singleLineQuestion = question.replace(/\s+/g, " ").trim();
+  return singleLineQuestion.slice(0, 48) || fallback;
 }
 
 export function buildChatRequest(
@@ -167,6 +166,17 @@ const normalizeWelcomeMessage = (
   ),
 });
 
+export function normalizeThreadTitle(thread: ChatThread, newChatTitle: string) {
+  if (thread.title !== newChatTitle) return thread;
+
+  const firstUserMessage = thread.messages.find(
+    (message) => message.role === "user",
+  );
+  return firstUserMessage
+    ? { ...thread, title: getThreadTitle(firstUserMessage.text, newChatTitle) }
+    : thread;
+}
+
 export function HomeScreen({ appState, setAppState, strings }: Props) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState("");
@@ -184,13 +194,16 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     loadChatThreads()
       .then(({ threads: loaded, activeThreadId: stored }) => {
         const normalized = loaded.map((thread) =>
-          normalizeWelcomeMessage(thread, strings.welcomeMessage),
+          normalizeThreadTitle(
+            normalizeWelcomeMessage(thread, strings.welcomeMessage),
+            strings.newChat,
+          ),
         );
         setThreads(normalized);
         setActiveThreadId(stored || normalized[0]?.id || "");
       })
       .catch(() => undefined);
-  }, [strings.welcomeMessage]);
+  }, [strings.newChat, strings.welcomeMessage]);
 
   useEffect(() => {
     persistChatThreads(threads, activeThreadId).catch(() => undefined);
@@ -203,17 +216,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   const messageCount = activeThread?.messages.length ?? 0;
   const lastMessage = activeThread?.messages[messageCount - 1] ?? null;
   const connectionStatus = getConnectionStatus(appState, strings);
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
-  const keyboardVerticalOffset = getKeyboardVerticalOffset(
-    Platform.OS,
-    tabBarHeight,
-    insets.bottom,
-  );
-  const composerBottomPadding = getComposerBottomPadding(
-    Platform.OS,
-    insets.bottom,
-  );
+  const keyboardVerticalOffset = getKeyboardVerticalOffset(Platform.OS, 0, 0);
   const lastModelRefreshKey = useRef("");
 
   useEffect(() => {
@@ -274,6 +277,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
   }, [
     appState.serverUrl,
     appState.lastConnectionState,
+    setAppState,
     strings.connectionSuccessful,
     strings.unknownError,
   ]);
@@ -351,7 +355,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
     let threadId = activeThreadId;
     if (!threadId) {
       const thread = makeThread(
-        text.slice(0, 24) || strings.newChat,
+        getThreadTitle(text, strings.newChat),
         strings.welcomeMessage,
       );
       threadId = thread.id;
@@ -364,7 +368,9 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
       ...thread,
       messages: [...thread.messages, userMessage],
       updatedAt: Date.now(),
-      title: thread.messages.length ? thread.title : text.slice(0, 24),
+      title: thread.messages.some((message) => message.role === "user")
+        ? thread.title
+        : getThreadTitle(text, strings.newChat),
     }));
     try {
       const baseUrl = appState.serverUrl.replace(/\/+$/, "");
@@ -586,15 +592,17 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
 
       <KeyboardAvoidingView
         style={styles.chatContainer}
-        behavior="padding"
+        behavior={Platform.OS === "ios" ? KEYBOARD_AVOIDING_BEHAVIOR : undefined}
         keyboardVerticalOffset={keyboardVerticalOffset}
-        automaticOffset
+        automaticOffset={KEYBOARD_LAYOUT.automaticOffset}
         enabled
       >
         <ScrollView
           style={styles.chatScrollContainer}
           contentContainerStyle={styles.chatScrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          onScrollBeginDrag={Keyboard.dismiss}
           showsVerticalScrollIndicator={false}
           ref={scrollViewRef}
         >
@@ -677,14 +685,7 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
           ) : null}
 
         </ScrollView>
-        <View
-          style={[
-            styles.inputComposer,
-            Platform.OS === "ios"
-              ? { paddingBottom: composerBottomPadding }
-              : null,
-          ]}
-        >
+        <View style={styles.inputComposer}>
           <View style={styles.inputRow}>
             <TextInput
               value={messageText}
@@ -695,32 +696,34 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
             />
             {messageText.trim().length > 0 ? (
               <Pressable
-                style={styles.clearButton}
+                style={styles.composerIconButton}
                 onPress={() => setMessageText("")}
                 accessibilityLabel="Clear message"
               >
-                <Text style={styles.clearButtonText}>×</Text>
+                <Ionicons name="close-circle" size={22} color="#94A3B8" />
               </Pressable>
-            ) : null}
+            ) : (
+              <Pressable
+                style={styles.composerIconButton}
+                onPress={Keyboard.dismiss}
+                accessibilityLabel="Dismiss keyboard"
+              >
+                <Ionicons name="chevron-down" size={22} color="#64748B" />
+              </Pressable>
+            )}
             <Pressable
               onPress={sendMessage}
               style={[
                 styles.sendButton,
-                isSending && styles.sendButtonDisabled,
+                (isSending || !messageText.trim()) && styles.sendButtonDisabled,
               ]}
-              disabled={isSending}
+              disabled={isSending || !messageText.trim()}
+              accessibilityLabel={strings.send}
             >
               {isSending ? (
-                <View style={styles.sendButtonContent}>
-                  <AnimatedTypingDots compact />
-                  <Text
-                    style={[styles.sendButtonText, styles.sendButtonTextDisabled]}
-                  >
-                    {strings.send}
-                  </Text>
-                </View>
+                <AnimatedTypingDots compact />
               ) : (
-                <Text style={styles.sendButtonText}>{strings.send}</Text>
+                <Ionicons name="send" size={18} color="#FFF" />
               )}
             </Pressable>
           </View>
@@ -915,9 +918,9 @@ export function HomeScreen({ appState, setAppState, strings }: Props) {
 }
 
 const AnimatedTypingDots = ({ compact = false }: { compact?: boolean }) => {
-  const dotAnimations = useRef(
+  const [dotAnimations] = useState(() =>
     [0, 1, 2].map(() => new Animated.Value(0)),
-  ).current;
+  );
 
   useEffect(() => {
     const animations = dotAnimations.map((dot, index) =>

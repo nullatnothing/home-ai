@@ -4,7 +4,8 @@ import {
   getComposerBottomPadding,
   getConnectionStatus,
   getKeyboardVerticalOffset,
-  HomeScreen,
+  getThreadTitle,
+  normalizeThreadTitle,
   KEYBOARD_AVOIDING_BEHAVIOR,
   KEYBOARD_VERTICAL_OFFSET,
   resolveAssistantText,
@@ -98,17 +99,53 @@ describe("HomeScreen screen contracts", () => {
     ).toEqual({ label: "Connexion échouée", color: "#EF4444" });
   });
 
-  it("keeps the keyboard offset and composer inset above the keyboard and tab bar", () => {
+  it("uses the first question as a concise history title", () => {
+    expect(getThreadTitle("  How do I insulate my attic?  ", "New chat")).toBe(
+      "How do I insulate my attic?",
+    );
+    expect(getThreadTitle("What is\nthe best smart thermostat?", "New chat")).toBe(
+      "What is the best smart thermostat?",
+    );
+    expect(getThreadTitle("   ", "New chat")).toBe("New chat");
+  });
+
+  it("repairs saved placeholder titles from the first user question", () => {
+    const thread = {
+      id: "thread-1",
+      title: "New chat",
+      createdAt: 1,
+      updatedAt: 1,
+      messages: [
+        { id: "welcome", role: "assistant" as const, text: "Welcome" },
+        {
+          id: "question",
+          role: "user" as const,
+          text: "Can I automate my lights?",
+        },
+      ],
+    };
+
+    expect(normalizeThreadTitle(thread, "New chat").title).toBe(
+      "Can I automate my lights?",
+    );
+    const renamedThread = { ...thread, title: "My custom title" };
+    expect(normalizeThreadTitle(renamedThread, "New chat")).toBe(renamedThread);
+  });
+
+  it("does not double-count the keyboard, tab bar, or safe area on iOS", () => {
     expect(KEYBOARD_AVOIDING_BEHAVIOR).toBe("padding");
-    expect(KEYBOARD_VERTICAL_OFFSET).toBe(88);
-    expect(getKeyboardVerticalOffset("ios", 49, 20)).toBe(108);
-    expect(getKeyboardVerticalOffset("ios", 20, 34)).toBe(108);
+    expect(KEYBOARD_VERTICAL_OFFSET).toBe(0);
+    expect(getKeyboardVerticalOffset("ios", 49, 20)).toBe(0);
+    expect(getKeyboardVerticalOffset("ios", 20, 34)).toBe(0);
     expect(getKeyboardVerticalOffset("android", 49, 20)).toBe(0);
-    expect(getComposerBottomPadding("ios", 20)).toBe(40);
+    expect(getComposerBottomPadding("ios", 20)).toBe(0);
     expect(getComposerBottomPadding("android", 20)).toBe(0);
     expect(styles.messageBubble).toMatchObject({
       marginHorizontal: 16,
       maxWidth: "82%",
     });
+    expect(styles.inputRow).toMatchObject({ alignItems: "center", gap: 6 });
+    expect(styles.composerIconButton).toMatchObject({ width: 36, height: 36 });
+    expect(styles.sendButton).toMatchObject({ width: 44, minHeight: 44 });
   });
 });
