@@ -145,6 +145,8 @@ const normalizeWelcomeMessage = (
   ),
 });
 
+export { normalizeWelcomeMessage, parseOllamaStreamMessage };
+
 export function normalizeThreadTitle(thread: ChatThread, newChatTitle: string) {
   if (thread.title !== newChatTitle) return thread;
 

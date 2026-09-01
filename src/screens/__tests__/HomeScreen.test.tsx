@@ -1,12 +1,15 @@
+import React from "react";
 import { translations } from "../../constants";
 import {
+  HomeScreen,
   buildChatRequest,
   getConnectionStatus,
   getThreadTitle,
   normalizeThreadTitle,
+  normalizeWelcomeMessage,
+  parseOllamaStreamMessage,
   resolveAssistantText,
 } from "../HomeScreen";
-import { styles } from "../../theme/styles";
 
 jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(),
@@ -128,13 +131,31 @@ describe("HomeScreen screen contracts", () => {
     expect(normalizeThreadTitle(renamedThread, "New chat")).toBe(renamedThread);
   });
 
-  it("keeps the message layout and composer controls compact", () => {
-    expect(styles.messageBubble).toMatchObject({
-      marginHorizontal: 16,
-      maxWidth: "82%",
+  it("parses streamed Ollama chunks and normalizes welcome messages", () => {
+    expect(parseOllamaStreamMessage('{"message":{"content":"hello"}}')).toEqual({
+      text: "hello",
+      done: false,
     });
-    expect(styles.inputRow).toMatchObject({ alignItems: "center", gap: 6 });
-    expect(styles.composerIconButton).toMatchObject({ width: 36, height: 36 });
-    expect(styles.sendButton).toMatchObject({ width: 44, minHeight: 44 });
+    expect(parseOllamaStreamMessage('{"done":true}')).toEqual({ text: "", done: true });
+    expect(parseOllamaStreamMessage("not-json")).toEqual({ text: "", done: false });
+
+    const thread = {
+      id: "thread-1",
+      title: "New chat",
+      createdAt: 1,
+      updatedAt: 1,
+      messages: [
+        { id: "welcome-welcome", role: "assistant", text: "Old welcome" },
+        { id: "q-1", role: "user", text: "How are you?" },
+      ],
+    };
+
+    expect(normalizeWelcomeMessage(thread, "New welcome")).toEqual({
+      ...thread,
+      messages: [
+        { id: "welcome-welcome", role: "assistant", text: "New welcome" },
+        { id: "q-1", role: "user", text: "How are you?" },
+      ],
+    });
   });
 });

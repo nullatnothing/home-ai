@@ -45,6 +45,46 @@ describe("fetchJson", () => {
     );
   });
 
+  it("uses response.json when no text is available", async () => {
+    const json = { ok: true };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: jest.fn().mockReturnValue("application/json") },
+      json: jest.fn().mockResolvedValue(json),
+      text: undefined,
+    } as any);
+
+    await expect(fetchJson("https://example.com")).resolves.toEqual(json);
+  });
+
+  it("returns an empty object when the server responds with no content", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: jest.fn().mockReturnValue("text/plain") },
+      text: jest.fn().mockResolvedValue("   "),
+      json: jest.fn(),
+    } as any);
+
+    await expect(fetchJson("https://example.com")).resolves.toEqual({});
+  });
+
+  it("throws a clear error for invalid JSON or malformed NDJSON payloads", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: jest.fn().mockReturnValue("application/json") },
+      text: jest.fn().mockResolvedValue("not-json"),
+      json: jest.fn(),
+    } as any);
+
+    await expect(fetchJson("https://example.com")).rejects.toThrow(
+      "Invalid JSON response from server: not-json",
+    );
+
+    expect(() => parseNdjsonPayload("not-json")).toThrow(
+      "Invalid JSON response from server: not-json",
+    );
+  });
+
   it("throws server error text on failed response", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
@@ -53,6 +93,16 @@ describe("fetchJson", () => {
     } as any);
 
     await expect(fetchJson("https://example.com")).rejects.toThrow("Boom");
+  });
+
+  it("prefers parsed error fields when a failed response contains JSON", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: jest.fn().mockResolvedValue('{"message":"From JSON"}'),
+    } as any);
+
+    await expect(fetchJson("https://example.com")).rejects.toThrow("From JSON");
   });
 
   it("falls back to status message when error text is empty", async () => {
